@@ -16,7 +16,7 @@ contract BEP20Mintable is ERC20, Ownable {
         burnEscrowTokenContractAddress = _burnTokensEscrowAddress;
     }
 
-    event TokensTransferInitiated(address indexed fromUserAddressOnBinanceChain, uint256 amount, address toUserAddressOnEthereumChain);
+    event TokensTransferInitiated(address indexed fromUserAddressOnBinanceChain, uint256 amount, address toUserAddressOnEthereumChain,address tokenAddress);
     event TokensMinted(address indexed toUserAddressOnBinanceChain, uint256 amount, address fromUserAddresOnEthereumChain);
     event MintFeePaid(address indexed user, uint256 amount);
     
@@ -35,12 +35,12 @@ contract BEP20Mintable is ERC20, Ownable {
         emit TokensMinted(_toUserAddressOnBinanceChain, _amount, _fromUserAddressOnEthereumChain);
     }
 
-    function burn(address _fromUserAddressOnBinanceChain, uint256 _amount, address _toUserAddressOnEthereumChain) external {
+    function burn(address _fromUserAddressOnBinanceChain, uint256 _amount, address _toUserAddressOnEthereumChain,address tokenAddress) external {
         require(balanceOf(_fromUserAddressOnBinanceChain) >= _amount, "Insufficient balance to burn");
         // Check if the contract has been approved to transfer tokens on behalf of the user
         uint256 allowance = bep20Token.allowance(_fromUserAddressOnBinanceChain, burnEscrowTokenContractAddress);
         require(allowance >= _amount, "Insufficient allowance to transfer tokens");
-        emit TokensTransferInitiated(_fromUserAddressOnBinanceChain, _amount, _toUserAddressOnEthereumChain);
+        emit TokensTransferInitiated(_fromUserAddressOnBinanceChain, _amount, _toUserAddressOnEthereumChain,tokenAddress);
     }
 
     // Function to set the mint fee, only callable by the owner
