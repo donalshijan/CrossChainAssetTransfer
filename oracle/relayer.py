@@ -12,27 +12,49 @@ BSC_NODE_URL = os.getenv('BSC_NODE_URL')
 # Private key and address of the account that will sign transactions
 ETH_CONTRACT_OWNER_PRIVATE_KEY = os.getenv('ETH_CONTRACT_OWNER_PRIVATE_KEY')  # Use environment variable for Ethereum private key
 BSC_CONTRACT_OWNER_PRIVATE_KEY = os.getenv('BSC_CONTRACT_OWNER_PRIVATE_KEY')  # Use environment variable for BSC private key
+
 ETH_CONTRACT_OWNER_ADDRESS = os.getenv('ETH_CONTRACT_OWNER_ADDRESS')  # Use environment variable for Ethereum owner address
 BSC_CONTRACT_OWNER_ADDRESS = os.getenv('BSC_CONTRACT_OWNER_ADDRESS')  # Use environment variable for BSC owner address
+
 BURN_AND_RELEASE_CORDINATOR_CONTRACT_OWNER_ADDRESS=os.getenv('BSC_CONTRACT_OWNER_ADDRESS')
 BURN_AND_RELEASE_CORDINATOR_CONTRACT_PRIVATE_KEY=os.getenv('BSC_CONTRACT_OWNER_PRIVATE_KEY')
-# Initialize Web3 instances for Ethereum and BSC
-web3_eth = Web3(Web3.HTTPProvider(ETHEREUM_NODE_URL))
-web3_bsc = Web3(Web3.HTTPProvider(BSC_NODE_URL))
 
 # ABI and contract addresses (Replace with actual ABI and contract addresses)
 ERC20_LOCK_ABI = [...]  # Replace with the ABI of your ERC20Lock contract
 ERC20_LOCK_ADDRESS = os.getenv('ERC20_LOCK_ADDRESS')
+
 BEP20_ABI = [...]  # Replace with the ABI of your BEP20Mintable contract
 BEP20_ADDRESS = os.getenv('BEP20_MINTABLE_ADDRESS')
+
 BURN_AND_RELEASE_CORDINATOR_ABI = [...]  # Replace with the ABI of your BEP20Mintable contract
 BURN_AND_RELEASE_CORDINATOR_ADDRESS = os.getenv('BURN_AND_RELEASE_CORDINATOR_ADDRESS')
+
+# Initialize Web3 instances for Ethereum and BSC
+web3_eth = Web3(Web3.HTTPProvider(ETHEREUM_NODE_URL))
+web3_bsc = Web3(Web3.HTTPProvider(BSC_NODE_URL))
 
 erc20_lock_contract = web3_eth.eth.contract(address=ERC20_LOCK_ADDRESS, abi=ERC20_LOCK_ABI)
 bep20_contract = web3_bsc.eth.contract(address=BEP20_ADDRESS, abi=BEP20_ABI)
 burnAndReleaseContract=web3_eth.eth.contract(address=BURN_AND_RELEASE_CORDINATOR_ADDRESS, abi=BURN_AND_RELEASE_CORDINATOR_ABI)
 
+def withdraw_fee(contract_instance,web3_instance, method_name, address, private_key,feetype):
+    withdraw_fee_tx = contract_instance.functions[method_name]().buildTransaction({
+        'from': address,
+        'nonce': web3_instance.eth.getTransactionCount(address),
+        'gas': 100000,  # Adjust gas as needed for the withdraw transaction
+        'gasPrice': web3_instance.toWei('5', 'gwei')
+    })
+
+    signed_withdraw_fee_tx = web3_instance.eth.account.sign_transaction(withdraw_fee_tx, private_key=private_key)
+    withdraw_fee_tx_hash = web3_instance.eth.sendRawTransaction(signed_withdraw_fee_tx.rawTransaction)
+    print(f'Withdrew {feetype} Fee to {address}. TxHash: {web3_instance.toHex(withdraw_fee_tx_hash)}')
+    # Wait for the withdraw transaction to be mined
+    web3_instance.eth.waitForTransactionReceipt(withdraw_fee_tx_hash)
+
 def mint_tokens_on_bsc(userAddressOnBinanceChain, amount,fromUserAddressOnEthereumChain):
+    
+    withdraw_fee(bep20_contract,web3_bsc,'withdrawMintFee',BSC_CONTRACT_OWNER_ADDRESS,BSC_CONTRACT_OWNER_PRIVATE_KEY,'Mint')
+    
     tx = bep20_contract.functions.mint(userAddressOnBinanceChain, amount,fromUserAddressOnEthereumChain).buildTransaction({
         'from': BSC_CONTRACT_OWNER_ADDRESS,
         'nonce': web3_bsc.eth.getTransactionCount(BSC_CONTRACT_OWNER_ADDRESS),
@@ -45,6 +67,9 @@ def mint_tokens_on_bsc(userAddressOnBinanceChain, amount,fromUserAddressOnEthere
     print(f'Created Transaction for Minting {amount} tokens for {userAddressOnBinanceChain} on BSC. TxHash: {web3_bsc.toHex(tx_hash)}')
 
 def unlock_tokens_on_ethereum(tokenAddressOfTokenToRelease,userAddressOnEthereumChain, amount,fromUserAddressOnBinanceChain):
+
+    withdraw_fee(erc20_lock_contract,web3_eth,'withdrawReleaseFee',ETH_CONTRACT_OWNER_ADDRESS,ETH_CONTRACT_OWNER_PRIVATE_KEY,'Release')
+    
     tx = erc20_lock_contract.functions.releaseTokens(tokenAddressOfTokenToRelease,userAddressOnEthereumChain, amount,fromUserAddressOnBinanceChain).buildTransaction({
         'from': ETH_CONTRACT_OWNER_ADDRESS,
         'nonce': web3_eth.eth.getTransactionCount(ETH_CONTRACT_OWNER_ADDRESS),
@@ -57,40 +82,47 @@ def unlock_tokens_on_ethereum(tokenAddressOfTokenToRelease,userAddressOnEthereum
     print(f'Created Transaction for Unlocking {amount} tokens for {userAddressOnEthereumChain} on Ethereum. TxHash: {web3_eth.toHex(tx_hash)}')
 
 def initiateBurnAndRelease(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain):
+    
+    withdraw_fee(bep20_contract,web3_bsc,'withdrawCoordinatorFees',BSC_CONTRACT_OWNER_ADDRESS,BSC_CONTRACT_OWNER_PRIVATE_KEY,'Coordinator')
+
     tx = burnAndReleaseContract.functions.initateBurnAndRelease(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain).buildTransaction({
         'from': BURN_AND_RELEASE_CORDINATOR_CONTRACT_OWNER_ADDRESS,
-        'nonce': web3_eth.eth.getTransactionCount(BURN_AND_RELEASE_CORDINATOR_CONTRACT_OWNER_ADDRESS),
+        'nonce': web3_bsc.eth.getTransactionCount(BURN_AND_RELEASE_CORDINATOR_CONTRACT_OWNER_ADDRESS),
         'gas': 2000000,
-        'gasPrice': web3_eth.toWei('20', 'gwei')
+        'gasPrice': web3_bsc.toWei('20', 'gwei')
     })
 
-    signed_tx = web3_eth.eth.account.sign_transaction(tx, private_key=BURN_AND_RELEASE_CORDINATOR_CONTRACT_PRIVATE_KEY)
-    tx_hash = web3_eth.eth.sendRawTransaction(signed_tx.rawTransaction)
-    print(f'Created Transaction for Initiating Burn of {amount} tokens for {fromUserAddressOnBinanceChain} on Binance. TxHash: {web3_eth.toHex(tx_hash)}')
+    signed_tx = web3_bsc.eth.account.sign_transaction(tx, private_key=BURN_AND_RELEASE_CORDINATOR_CONTRACT_PRIVATE_KEY)
+    tx_hash = web3_bsc.eth.sendRawTransaction(signed_tx.rawTransaction)
+    print(f'Created Transaction for Initiating Burn of {amount} tokens for {fromUserAddressOnBinanceChain} on Binance. TxHash: {web3_bsc.toHex(tx_hash)}')
 
 def releaseCompleted(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain):
+    withdraw_fee(bep20_contract,web3_bsc,'withdrawCoordinatorFees',BSC_CONTRACT_OWNER_ADDRESS,BSC_CONTRACT_OWNER_PRIVATE_KEY,'Coordinator')
+    
     tx = burnAndReleaseContract.functions.releaseCompleted(tokenAddress,toUserAddressOnEthereumChain,amount,fromUserAddressOnBinanceChain).buildTransaction({
         'from': BURN_AND_RELEASE_CORDINATOR_CONTRACT_OWNER_ADDRESS,
-        'nonce': web3_eth.eth.getTransactionCount(BURN_AND_RELEASE_CORDINATOR_CONTRACT_OWNER_ADDRESS),
+        'nonce': web3_bsc.eth.getTransactionCount(BURN_AND_RELEASE_CORDINATOR_CONTRACT_OWNER_ADDRESS),
         'gas': 2000000,
-        'gasPrice': web3_eth.toWei('20', 'gwei')
+        'gasPrice': web3_bsc.toWei('20', 'gwei')
     })
 
-    signed_tx = web3_eth.eth.account.sign_transaction(tx, private_key=BURN_AND_RELEASE_CORDINATOR_CONTRACT_PRIVATE_KEY)
-    tx_hash = web3_eth.eth.sendRawTransaction(signed_tx.rawTransaction)
-    print(f'Created Transaction for Release completion of {amount} tokens for {toUserAddressOnEthereumChain} on Ethereum. TxHash: {web3_eth.toHex(tx_hash)}')
+    signed_tx = web3_bsc.eth.account.sign_transaction(tx, private_key=BURN_AND_RELEASE_CORDINATOR_CONTRACT_PRIVATE_KEY)
+    tx_hash = web3_bsc.eth.sendRawTransaction(signed_tx.rawTransaction)
+    print(f'Created Transaction for Release completion of {amount} tokens for {toUserAddressOnEthereumChain} on Ethereum. TxHash: {web3_bsc.toHex(tx_hash)}')
 
 def releaseFailed(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain):
+    withdraw_fee(bep20_contract,web3_bsc,'withdrawCoordinatorFees',BSC_CONTRACT_OWNER_ADDRESS,BSC_CONTRACT_OWNER_PRIVATE_KEY,'Coordinator')
+    
     tx = burnAndReleaseContract.functions.releaseFailed(tokenAddress,toUserAddressOnEthereumChain,amount,fromUserAddressOnBinanceChain).buildTransaction({
         'from': BURN_AND_RELEASE_CORDINATOR_CONTRACT_OWNER_ADDRESS,
-        'nonce': web3_eth.eth.getTransactionCount(BURN_AND_RELEASE_CORDINATOR_CONTRACT_OWNER_ADDRESS),
+        'nonce': web3_bsc.eth.getTransactionCount(BURN_AND_RELEASE_CORDINATOR_CONTRACT_OWNER_ADDRESS),
         'gas': 2000000,
-        'gasPrice': web3_eth.toWei('20', 'gwei')
+        'gasPrice': web3_bsc.toWei('20', 'gwei')
     })
 
-    signed_tx = web3_eth.eth.account.sign_transaction(tx, private_key=BURN_AND_RELEASE_CORDINATOR_CONTRACT_PRIVATE_KEY)
-    tx_hash = web3_eth.eth.sendRawTransaction(signed_tx.rawTransaction)
-    print(f'Created Transaction for Release Failure of {amount} tokens for {toUserAddressOnEthereumChain} on Ethereum. TxHash: {web3_eth.toHex(tx_hash)}')
+    signed_tx = web3_bsc.eth.account.sign_transaction(tx, private_key=BURN_AND_RELEASE_CORDINATOR_CONTRACT_PRIVATE_KEY)
+    tx_hash = web3_bsc.eth.sendRawTransaction(signed_tx.rawTransaction)
+    print(f'Created Transaction for Release Failure of {amount} tokens for {toUserAddressOnEthereumChain} on Ethereum. TxHash: {web3_bsc.toHex(tx_hash)}')
 
 
 def listen_and_relay():
@@ -118,7 +150,7 @@ def listen_and_relay():
             print(f'{amount} Tokens have been transferred from Binance address {fromUserAddressOnBinanceChain} to Ethereum address {toUserAddressOnEthereumChain}')
             releaseCompleted(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain)
         
-        event_filter_eth_TransferFailed = erc20_lock_contract.events.TokenTransferFailed.createFilter(fromBlock='latest')
+        event_filter_eth_TransferFailed = erc20_lock_contract.events.TokenReleaseFailed.createFilter(fromBlock='latest')
         events_eth_Failed = event_filter_eth_TransferFailed.get_new_entries()
 
         for event in events_eth_Failed:
@@ -126,7 +158,7 @@ def listen_and_relay():
             amount = event.args.amount
             tokenAddress=event.args.tokenAddress
             fromUserAddressOnBinanceChain = event.args.fromUserAddressOnBinanceChain
-            print(f'TokenTransferFailed event detected')
+            print(f'TokenReleaseFailed event detected')
             releaseFailed(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain)
             
 

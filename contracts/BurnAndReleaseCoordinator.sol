@@ -3,9 +3,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-interface IBEP20Mintable {
-    function burn(address _fromUserAddressOnBinanceChain, uint256 _amount, address _toUserAddressOnEthereumChain) external;
-}
 
 interface IBurnTokensEscrow {
     function escrowTokens(uint256 _amount, address fromUserAddressOnBinanceChain) external;
@@ -14,23 +11,18 @@ interface IBurnTokensEscrow {
 }
 
 contract BurnAndReleaseCoordinator is AccessControl {
-    IBEP20Mintable public bep20Mintable;
     IBurnTokensEscrow public burnTokensEscrow;
 
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
-    uint256 public coordinatorFee; // Fee amount for coordinator's operations
 
     event BurnInitiated(address tokenAddress,address indexed fromUserAddressOnBinanceChain, uint256 amount, address indexed toUserAddressOnEthereumChain);
     event TransferCompleted(address fromUserAddressOnBinanceChain,address  toUserAddressOnEthereumChain, uint256 amount,address tokenAddress);
     event ReleaseFailed(address indexed fromUserAddressOnBinanceChain, uint256 amount);
     event ReturnedTokens(address toUserAddressOnBinanceChain, uint256 amount);
-    event CoordinatorFeePaid(address indexed payer, uint256 amount);
 
-    constructor(address _bep20MintableAddress, address _burnTokensEscrowAddress, uint256 _coordinatorFee) {
-        bep20Mintable = IBEP20Mintable(_bep20MintableAddress);
+    constructor(address _bep20MintableAddress, address _burnTokensEscrowAddress) {
         burnTokensEscrow = IBurnTokensEscrow(_burnTokensEscrowAddress);
-        coordinatorFee = _coordinatorFee;
 
         // Set up the roles
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -71,24 +63,6 @@ contract BurnAndReleaseCoordinator is AccessControl {
         }
     }
 
-    function payCoordinatorFee() external payable {
-        require(msg.value >= coordinatorFee, "Insufficient fee paid");
-        // Refund excess fee
-        if (msg.value > coordinatorFee) {
-            payable(msg.sender).transfer(msg.value - coordinatorFee);
-        }
-        emit CoordinatorFeePaid(msg.sender, msg.value);
-    }
-
-    function withdrawFees() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No fees to withdraw");
-        payable(owner()).transfer(balance);
-    }
-
-    function setCoordinatorFee(uint256 _coordinatorFee) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        coordinatorFee = _coordinatorFee;
-    }
 
     function addOwner(address newOwner) external onlyRole(DEFAULT_ADMIN_ROLE) {
         grantRole(OWNER_ROLE, newOwner);
