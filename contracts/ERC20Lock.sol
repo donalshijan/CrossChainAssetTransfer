@@ -8,12 +8,12 @@ contract ERC20Lock is Ownable {
     // Mapping to handle multiple ERC20 tokens
     mapping(address => IERC20) public tokenByAddress;
     mapping(address => mapping(address => uint256)) public lockedBalances;
-    mapping(address => mapping(uint256 => bool)) public usedReceipts;
+    mapping(address => mapping(uint256 => bool)) private usedReceipts;
     // Fee structure
     uint256 public releaseFee; // Fee required to release tokens
-    address bscContractOwner;
+    address private bscContractOwner;
     mapping(address => uint256) public releaseFeesCollected; // Mapping to track fees paid by each user
-    mapping(address => uint256) public nonces;
+    mapping(address => uint256) private nonces;
     event TokensLocked(address indexed fromUserAddressOnEthereumChain, address indexed tokenAddress, uint256 amount, address toUserAddressOnBinanceChain);
     event TokensReleased(address indexed toUserAddressOnEthereumChain, address indexed tokenAddress, uint256 amount, address fromUserAddressOnBinanceChain);
     event TokenReleaseFailed(address indexed toUserAddressOnEthereumChain, address indexed tokenAddress, uint256 amount, address fromUserAddressOnBinanceChain);
@@ -96,7 +96,7 @@ contract ERC20Lock is Ownable {
         uint256 nonce,
         address contractAddress,
         bytes memory receipt
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         // Recreate the message that was signed
         bytes32 receiptMessage = keccak256(abi.encodePacked(user, amount, nonce, contractAddress));
 
@@ -126,5 +126,10 @@ contract ERC20Lock is Ownable {
         }
 
         return (v, r, s);
+    }
+
+    // Function to destroy the contract and send remaining funds to the owner
+    function destroyContract() external onlyOwner {
+        selfdestruct(payable(owner()));
     }
 }

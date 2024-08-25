@@ -3,6 +3,9 @@ import asyncio
 from web3 import Web3
 import os
 from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
 
 # Load environment variables
 load_dotenv()
@@ -33,6 +36,26 @@ ETH_CONTRACT_OWNER_PRIVATE_KEY = os.getenv('ETH_CONTRACT_OWNER_PRIVATE_KEY')
 # Data structure to store signed receipts
 signed_receipts = {}
 
+app = FastAPI()
+
+class ReceiptRequest(BaseModel):
+    receipt_id: str
+
+@app.post("/collect/")
+async def collect_receipt(request: ReceiptRequest):
+    receipt_id = request.receipt_id
+    await asyncio.sleep(0)  # Yield control to the event loop
+    receipt = signed_receipts.get(receipt_id, None)
+
+    if receipt:
+        return receipt
+    else:
+        raise HTTPException(status_code=404, detail="Receipt not found.")
+
+
+def run_http_server():
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+    
 # Event handler (as defined above)
 def handle_event(event, event_name):
     sender = event['args']['payer']
@@ -60,13 +83,16 @@ def handle_event(event, event_name):
         'receipt': signed_message.signature.hex(),
     }
 
-    print(f"Signed receipt stored for {sender} for {event_name} event: {signed_receipts[receipt_id]}")
+    print(f"[ReceiptGenerator] Signed receipt stored for {sender} for {event_name} event: {signed_receipts[receipt_id]}")
 
 # Event listener function
 def log_loop(event_filter, poll_interval, event_name):
     while True:
-        for event in event_filter.get_new_entries():
-            handle_event(event, event_name)
+        try:
+            for event in event_filter.get_new_entries():
+                handle_event(event, event_name)
+        except Exception as e:
+            print(f"[ReceiptGenerator] Error handling events: {e}")
         web3_bsc.middleware_stack.sleep(poll_interval)
 
 # Create a filter for the MintFeePaid event on BSC
@@ -74,32 +100,25 @@ mint_fee_filter = bep20_contract.events.MintFeePaid.createFilter(fromBlock='late
 # Create a filter for the ReleaseFeePaid event on Ethereum
 release_fee_filter = erc20_lock_contract.events.ReleaseFeePaid.createFilter(fromBlock='latest')
 
-async def collect_receipt(receipt_id):
-    # Retrieve the receipt by its unique receipt ID asynchronously
-    await asyncio.sleep(0)  # Yield control to the event loop
-    receipt = signed_receipts.get(receipt_id, None)
-
-    if receipt:
-        return receipt
-    else:
-        return "Receipt not found."
 
 # Function to run the event listeners in parallel using threading
 def start_event_listeners():
-    threading.Thread(target=log_loop, args=(mint_fee_filter, 2, 'MintFeePaid')).start()
-    threading.Thread(target=log_loop, args=(release_fee_filter, 2, 'ReleaseFeePaid')).start()
+    # Start the HTTP server in a separate thread
+    threading.Thread(target=run_http_server, daemon=True).start()
+    threading.Thread(target=log_loop, args=(mint_fee_filter, 2, 'MintFeePaid'),daemon=True).start()
+    threading.Thread(target=log_loop, args=(release_fee_filter, 2, 'ReleaseFeePaid'),daemon=True).start()
 
 async def main():
-    print("Event listeners started...")
+    print("[ReceiptGenerator] Event listeners started...")
     start_event_listeners()
 
     # Example usage: collecting receipts asynchronously
-    while True:
-        # Simulate some async receipt collection
-        receipt_id = "some-receipt-id"
-        receipt = await collect_receipt(receipt_id)
-        print(f"Collected receipt: {receipt}")
-        await asyncio.sleep(10)  # Wait before collecting again
+    # while True:
+            # Simulate some async receipt collection
+    #     receipt_id = "some-receipt-id"
+    #     receipt = await collect_receipt(receipt_id)
+    #     print(f"Collected receipt: {receipt}")
+    #     await asyncio.sleep(10)  
 
 # Run the asyncio event loop
 asyncio.run(main())

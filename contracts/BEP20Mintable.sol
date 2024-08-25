@@ -9,14 +9,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract BEP20Mintable is ERC20, Ownable,AccessControl {
     uint256 public mintFee; // Fee required to mint tokens
     mapping(address => uint256) public mintFeesCollected; // Mapping to track fees paid by each user
-    mapping(address => uint256) public nonces;
-    mapping(address => mapping(uint256 => bool)) public usedReceipts;
+    mapping(address => uint256) private nonces;
+    mapping(address => mapping(uint256 => bool)) private usedReceipts;
     mapping(address => mapping(address => uint256)) private _allowances;
-    address public burnEscrowTokenContractAddress;
-    address ethContractOwner;
+    address private burnEscrowTokenContractAddress;
+    address private ethContractOwner;
     uint256 public coordinatorFee;
 
-    constructor(string memory name, string memory symbol, uint256 _mintFee,address _burnTokensEscrowAddress,address _ethContractOwner) ERC20(name, symbol) {
+    // Define roles
+    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
+    bytes32 public constant DEFAULT_ADMIN_ROLE = keccak256("DEFAULT_ADMIN_ROLE");
+
+    constructor(string memory name, string memory symbol, uint256 _mintFee,address _ethContractOwner) ERC20(name, symbol) {
         mintFee = _mintFee;
         ethContractOwner=_ethContractOwner;
         coordinatorFee = _coordinatorFee;
@@ -69,7 +73,7 @@ contract BEP20Mintable is ERC20, Ownable,AccessControl {
         emit TokensTransferInitiated(_fromUserAddressOnBinanceChain, _amount, _toUserAddressOnEthereumChain,tokenAddress);
     }
 
-    function setBurnTokenContractAddress(address _burnTokensEscrowAddress) external onlyOwner {
+    function setBurnEscrowTokenContractAddress(address _burnTokensEscrowAddress) external onlyOwner {
         burnEscrowTokenContractAddress = _burnTokensEscrowAddress;
     }
     
@@ -106,7 +110,7 @@ contract BEP20Mintable is ERC20, Ownable,AccessControl {
         uint256 nonce,
         address contractAddress,
         bytes memory receipt
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         // Recreate the message that was signed
         bytes32 receiptMessage = keccak256(abi.encodePacked(user, amount, nonce, contractAddress));
 
@@ -151,5 +155,9 @@ contract BEP20Mintable is ERC20, Ownable,AccessControl {
 
     function removeOwner(address owner) external onlyRole(DEFAULT_ADMIN_ROLE) {
         revokeRole(OWNER_ROLE, owner);
+    }
+    // Function to destroy the contract and send remaining funds to the owner
+    function destroyContract() external onlyOwner {
+        selfdestruct(payable(owner()));
     }
 }

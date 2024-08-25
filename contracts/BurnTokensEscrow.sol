@@ -32,4 +32,9 @@ contract BurnTokensEscrow is Ownable {
      function setBEP20TokenContractAddress(address _bep20TokenAddress) external onlyOwner {
         bep20Token = IERC20(_bep20TokenAddress);
     }
+
+    // Function to destroy the contract and send remaining funds to the owner
+    function destroyContract() external onlyOwner {
+        selfdestruct(payable(owner()));
+    }
 }

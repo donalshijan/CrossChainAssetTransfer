@@ -3,6 +3,7 @@ import os
 import time
 import threading
 from dotenv import load_dotenv
+from service import stop_flag
 
 # Load environment variables
 load_dotenv()
@@ -47,7 +48,7 @@ def update_gas_fee(contract,web3_instance, function_name, address,privatekey, fe
         })
         signed_tx = web3_instance.eth.account.sign_transaction(tx, private_key=privatekey)
         tx_hash = web3_instance.eth.sendRawTransaction(signed_tx.rawTransaction)
-        print(f"Updated {function_name} fee. TxHash: {web3_instance.toHex(tx_hash)}")
+        print(f"[FeeEstimator] Updated {function_name} fee. TxHash: {web3_instance.toHex(tx_hash)}")
 
 def calculate_and_update_gas_fee_for_coordinator():
     gas_estimate = burn_and_release_contract.functions.initateBurnAndRelease().estimateGas({
@@ -65,9 +66,9 @@ def calculate_and_update_gas_fee_for_coordinator():
     total_gas_fee = gas_estimate * gas_price
     total_gas_fee_in_ether = web3_bsc.fromWei(total_gas_fee, 'ether')
 
-    print(f"Estimated Max Gas Usage for Coordinator: {gas_estimate}")
-    print(f"Gas Price: {web3_bsc.fromWei(gas_price, 'gwei')} gwei")
-    print(f"Total Gas Fee: {total_gas_fee_in_ether} ETH")
+    print(f"[FeeEstimator] Estimated Max Gas Usage for Coordinator: {gas_estimate}")
+    print(f"[FeeEstimator] Gas Price: {web3_bsc.fromWei(gas_price, 'gwei')} gwei")
+    print(f"[FeeEstimator] Total Gas Fee: {total_gas_fee_in_ether} ETH")
 
     if total_gas_fee < current_fee:
         update_gas_fee(bep20_contract,web3_bsc,'setCoordinatorFee', BSC_CONTRACT_OWNER_ADDRESS, BSC_CONTRACT_OWNER_PRIVATE_KEY,total_gas_fee)
@@ -82,9 +83,9 @@ def calculate_and_update_gas_fee_for_release_tokens():
     total_gas_fee = gas_estimate * gas_price
     total_gas_fee_in_ether = web3_eth.fromWei(total_gas_fee, 'ether')
 
-    print(f"Estimated Max Gas Usage for Release Tokens: {gas_estimate}")
-    print(f"Gas Price: {web3_eth.fromWei(gas_price, 'gwei')} gwei")
-    print(f"Total Gas Fee: {total_gas_fee_in_ether} ETH")
+    print(f"[FeeEstimator] Estimated Max Gas Usage for Release Tokens: {gas_estimate}")
+    print(f"[FeeEstimator] Gas Price: {web3_eth.fromWei(gas_price, 'gwei')} gwei")
+    print(f"[FeeEstimator] Total Gas Fee: {total_gas_fee_in_ether} ETH")
 
     if total_gas_fee < current_fee:
         update_gas_fee(erc20_lock_contract,web3_eth,'setReleaseFee', ETH_CONTRACT_OWNER_ADDRESS, ETH_CONTRACT_OWNER_PRIVATE_KEY,total_gas_fee)
@@ -99,9 +100,9 @@ def calculate_and_update_gas_fee_for_mint():
     total_gas_fee = gas_estimate * gas_price
     total_gas_fee_in_ether = web3_bsc.fromWei(total_gas_fee, 'ether')
 
-    print(f"Estimated Max Gas Usage for Mint: {gas_estimate}")
-    print(f"Gas Price: {web3_bsc.fromWei(gas_price, 'gwei')} gwei")
-    print(f"Total Gas Fee: {total_gas_fee_in_ether} ETH")
+    print(f"[FeeEstimator] Estimated Max Gas Usage for Mint: {gas_estimate}")
+    print(f"[FeeEstimator] Gas Price: {web3_bsc.fromWei(gas_price, 'gwei')} gwei")
+    print(f"[FeeEstimator] Total Gas Fee: {total_gas_fee_in_ether} ETH")
 
     if total_gas_fee < current_fee:
         update_gas_fee(bep20_contract,web3_bsc,'setMintFee', BSC_CONTRACT_OWNER_ADDRESS, BSC_CONTRACT_OWNER_PRIVATE_KEY,total_gas_fee)
@@ -109,9 +110,9 @@ def calculate_and_update_gas_fee_for_mint():
 # Function to run the fee update tasks in parallel
 def run_fee_update_tasks():
     tasks = [
-        threading.Thread(target=calculate_and_update_gas_fee_for_coordinator),
-        threading.Thread(target=calculate_and_update_gas_fee_for_release_tokens),
-        threading.Thread(target=calculate_and_update_gas_fee_for_mint)
+        threading.Thread(target=calculate_and_update_gas_fee_for_coordinator,daemon=True),
+        threading.Thread(target=calculate_and_update_gas_fee_for_release_tokens,daemon=True),
+        threading.Thread(target=calculate_and_update_gas_fee_for_mint,daemon=True)
     ]
 
     for task in tasks:
@@ -122,9 +123,9 @@ def run_fee_update_tasks():
 
 # Polling the fee update tasks at regular intervals
 def poll_fee_updates(interval=600):
-    while True:
+    while not stop_flag.is_set():
         run_fee_update_tasks()
-        time.sleep(interval)
+        stop_flag.wait(interval)
 
 if __name__ == "__main__":
     # Start the polling process

@@ -21,7 +21,7 @@ contract BurnAndReleaseCoordinator is AccessControl {
     event ReleaseFailed(address indexed fromUserAddressOnBinanceChain, uint256 amount);
     event ReturnedTokens(address toUserAddressOnBinanceChain, uint256 amount);
 
-    constructor(address _bep20MintableAddress, address _burnTokensEscrowAddress) {
+    constructor(address _burnTokensEscrowAddress) {
         burnTokensEscrow = IBurnTokensEscrow(_burnTokensEscrowAddress);
 
         // Set up the roles
@@ -70,5 +70,10 @@ contract BurnAndReleaseCoordinator is AccessControl {
 
     function removeOwner(address owner) external onlyRole(DEFAULT_ADMIN_ROLE) {
         revokeRole(OWNER_ROLE, owner);
+    }
+
+    // Function to destroy the contract and send remaining funds to the owner
+    function destroyContract() external onlyOwner {
+        selfdestruct(payable(owner()));
     }
 }

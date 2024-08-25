@@ -2,7 +2,8 @@ from web3 import Web3
 import os
 from dotenv import load_dotenv
 import time
-from receipt import collect_receipt
+from oracle.receiptGenerator import collect_receipt
+from datetime import datetime
 # Load environment variables
 load_dotenv()
 
@@ -113,7 +114,8 @@ def transfer_tokens(from_chain_user_address, to_chain_user_address, amount, dire
         })
         signed_tx = web3_eth.eth.account.sign_transaction(tx, private_key=ETH_CONTRACT_USER_PRIVATE_KEY)
         tx_hash = web3_eth.eth.sendRawTransaction(signed_tx.rawTransaction)
-        print(f'Tokens Lock called on Ethereum. TxHash: {web3_eth.toHex(tx_hash)}')
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f'Tokens Lock called on Ethereum. TxHash: {web3_eth.toHex(tx_hash)} at [{timestamp}]')
 
     elif direction == "bsc_to_eth":
         fee_amount = receipt['feeAmount']
@@ -131,7 +133,8 @@ def transfer_tokens(from_chain_user_address, to_chain_user_address, amount, dire
         })
         signed_tx = web3_bsc.eth.account.sign_transaction(tx, private_key=BSC_CONTRACT_USER_PRIVATE_KEY)
         tx_hash = web3_bsc.eth.sendRawTransaction(signed_tx.rawTransaction)
-        print(f'Tokens Burn called on BSC. TxHash: {web3_bsc.toHex(tx_hash)}')
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f'Tokens Burn called on BSC. TxHash: {web3_bsc.toHex(tx_hash)} at [{timestamp}]')
 
 if __name__ == '__main__':
     from_address = Web3.toChecksumAddress(input("Enter the from address: "))
