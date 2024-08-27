@@ -30,8 +30,8 @@ contract BEP20Mintable is ERC20, Ownable,AccessControl {
         _setupRole(OWNER_ROLE, msg.sender);
     }
 
-    event TokensTransferInitiated(address indexed fromUserAddressOnBinanceChain, uint256 amount, address toUserAddressOnEthereumChain,address tokenAddress);
-    event TokensMinted(address indexed toUserAddressOnBinanceChain, uint256 amount, address fromUserAddresOnEthereumChain);
+    event TokensTransferInitiated(address indexed fromUserAddressOnBinanceChain, uint256 amount, address toUserAddressOnEthereumChain,address tokenAddress,bytes16 transferRequestId);
+    event TokensMinted(address indexed toUserAddressOnBinanceChain, uint256 amount, address fromUserAddresOnEthereumChain,bytes16 transferRequestId);
     event MintFeePaid(address indexed payer, uint256 mintFeeAmount, uint256 nonce,address contractAddress, uint256 userTimestamp, bytes32 receiptMessage );
     event Approval(address indexed owner, address indexed spender, uint256 value);
     
@@ -50,15 +50,15 @@ contract BEP20Mintable is ERC20, Ownable,AccessControl {
         emit MintFeePaid(msg.sender, msg.value, nonce,address(this), userTimestamp,receiptMessage);
     }
 
-    function mint(address _toUserAddressOnBinanceChain, uint256 _amount, address _fromUserAddressOnEthereumChain) external onlyOwner {
+    function mint(address _toUserAddressOnBinanceChain, uint256 _amount, address _fromUserAddressOnEthereumChain,bytes16 transferRequestId) external onlyOwner {
         require(mintFeesCollected[_toUserAddressOnBinanceChain] >= mintFee, "Mint fee not paid or insufficient");
         
         _mint(_toUserAddressOnBinanceChain, _amount);
         mintFeesCollected[_toUserAddressOnBinanceChain] -= mintFee; // Deduct the fee after successful minting
-        emit TokensMinted(_toUserAddressOnBinanceChain, _amount, _fromUserAddressOnEthereumChain);
+        emit TokensMinted(_toUserAddressOnBinanceChain, _amount, _fromUserAddressOnEthereumChain, transferRequestId);
     }
 
-    function burn(address _fromUserAddressOnBinanceChain, uint256 _amount, address _toUserAddressOnEthereumChain,address tokenAddress,uint256 releaseFeeAmount,uint256 nonce, address contractAddress,bytes memory receipt) external {
+    function burn(address _fromUserAddressOnBinanceChain, uint256 _amount, address _toUserAddressOnEthereumChain,address tokenAddress,uint256 releaseFeeAmount,uint256 nonce, address contractAddress,bytes memory receipt,bytes16 transferRequestId) external {
         // Check that the receipt has not been used before
         require(!usedReceipts[msg.sender][nonce], "Receipt already used");
         // Ensure the signer is the owner of the BSC contract (or another authorized address)
@@ -70,7 +70,7 @@ contract BEP20Mintable is ERC20, Ownable,AccessControl {
         uint256 allowance = bep20Token.allowance(_fromUserAddressOnBinanceChain, burnEscrowTokenContractAddress);
         require(allowance >= _amount, "Insufficient allowance to transfer tokens");
         require(msg.value >= 3*coordinatorFee, "Insufficient Coordinator fee paid");
-        emit TokensTransferInitiated(_fromUserAddressOnBinanceChain, _amount, _toUserAddressOnEthereumChain,tokenAddress);
+        emit TokensTransferInitiated(_fromUserAddressOnBinanceChain, _amount, _toUserAddressOnEthereumChain,tokenAddress, transferRequestId);
     }
 
     function setBurnEscrowTokenContractAddress(address _burnTokensEscrowAddress) external onlyOwner {

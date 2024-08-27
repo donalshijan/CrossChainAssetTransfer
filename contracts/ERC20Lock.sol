@@ -14,9 +14,9 @@ contract ERC20Lock is Ownable {
     address private bscContractOwner;
     mapping(address => uint256) public releaseFeesCollected; // Mapping to track fees paid by each user
     mapping(address => uint256) private nonces;
-    event TokensLocked(address indexed fromUserAddressOnEthereumChain, address indexed tokenAddress, uint256 amount, address toUserAddressOnBinanceChain);
-    event TokensReleased(address indexed toUserAddressOnEthereumChain, address indexed tokenAddress, uint256 amount, address fromUserAddressOnBinanceChain);
-    event TokenReleaseFailed(address indexed toUserAddressOnEthereumChain, address indexed tokenAddress, uint256 amount, address fromUserAddressOnBinanceChain);
+    event TokensLocked(address indexed fromUserAddressOnEthereumChain, address indexed tokenAddress, uint256 amount, address toUserAddressOnBinanceChain,bytes16 transferRequestId);
+    event TokensReleased(address indexed toUserAddressOnEthereumChain, address indexed tokenAddress, uint256 amount, address fromUserAddressOnBinanceChain,bytes16 transferRequestId);
+    event TokenReleaseFailed(address indexed toUserAddressOnEthereumChain, address indexed tokenAddress, uint256 amount, address fromUserAddressOnBinanceChain,bytes16 transferRequestId);
     event ReleaseFeePaid(address indexed payer, uint256 releaseFeeAmount,uint256 nonce,address contractAddress, uint256 userTimestamp, bytes32 receiptMessage );
 
     constructor(address[] memory _tokens, uint256 _releaseFee,address _bscContractOwner) {
@@ -31,7 +31,7 @@ contract ERC20Lock is Ownable {
         tokenByAddress[tokenAddress] = IERC20(tokenAddress);
     }
 
-    function lockTokens(address _tokenAddress, uint256 _amount, address _toUserAddressOnBinanceChain,uint256 mintFeeAmount,uint256 nonce, address contractAddress,bytes memory receipt) external {
+    function lockTokens(address _tokenAddress, uint256 _amount, address _toUserAddressOnBinanceChain,uint256 mintFeeAmount,uint256 nonce, address contractAddress,bytes memory receipt,bytes16 transferRequestId) external {
 
         // Check that the receipt has not been used before
         require(!usedReceipts[msg.sender][nonce], "Receipt already used");
@@ -46,10 +46,10 @@ contract ERC20Lock is Ownable {
 
         lockedBalances[_tokenAddress][msg.sender] += _amount;
 
-        emit TokensLocked(msg.sender, _tokenAddress, _amount, _toUserAddressOnBinanceChain);
+        emit TokensLocked(msg.sender, _tokenAddress, _amount, _toUserAddressOnBinanceChain,transferRequestId);
     }
 
-    function releaseTokens(address _tokenAddress, address _userAddressOnEthereumChain, uint256 _amount, address _fromUserAddressOnBinanceChain) external onlyOwner {
+    function releaseTokens(address _tokenAddress, address _userAddressOnEthereumChain, uint256 _amount, address _fromUserAddressOnBinanceChain,bytes16 transferRequestId) external onlyOwner {
         require(releaseFeesCollected[msg.sender] >= releaseFee, "Release fee not paid or insufficient");
 
         IERC20 token = tokenByAddress[_tokenAddress];
@@ -59,11 +59,11 @@ contract ERC20Lock is Ownable {
 
         bool success = token.transfer(_userAddressOnEthereumChain, _amount);
         if (!success) {
-            emit TokenReleaseFailed(_userAddressOnEthereumChain, _tokenAddress, _amount, _fromUserAddressOnBinanceChain);
+            emit TokenReleaseFailed(_userAddressOnEthereumChain, _tokenAddress, _amount, _fromUserAddressOnBinanceChain, transferRequestId);
             revert("Token transfer failed");
         }
 
-        emit TokensReleased(_userAddressOnEthereumChain, _tokenAddress, _amount, _fromUserAddressOnBinanceChain);
+        emit TokensReleased(_userAddressOnEthereumChain, _tokenAddress, _amount, _fromUserAddressOnBinanceChain, transferRequestId);
     }
 
     function payReleaseFee(uint256 userTimestamp) external payable {

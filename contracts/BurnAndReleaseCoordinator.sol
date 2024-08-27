@@ -16,10 +16,10 @@ contract BurnAndReleaseCoordinator is AccessControl {
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
 
-    event BurnInitiated(address tokenAddress,address indexed fromUserAddressOnBinanceChain, uint256 amount, address indexed toUserAddressOnEthereumChain);
-    event TransferCompleted(address fromUserAddressOnBinanceChain,address  toUserAddressOnEthereumChain, uint256 amount,address tokenAddress);
-    event ReleaseFailed(address indexed fromUserAddressOnBinanceChain, uint256 amount);
-    event ReturnedTokens(address toUserAddressOnBinanceChain, uint256 amount);
+    event BurnInitiated(address tokenAddress,address indexed fromUserAddressOnBinanceChain, uint256 amount, address indexed toUserAddressOnEthereumChain,bytes16 transferRequestId);
+    event TransferCompleted(address fromUserAddressOnBinanceChain,address  toUserAddressOnEthereumChain, uint256 amount,address tokenAddress,bytes16 transferRequestId);
+    event ReleaseFailed(address indexed fromUserAddressOnBinanceChain, uint256 amount,bytes16 transferRequestId);
+    event ReturnedTokens(address toUserAddressOnBinanceChain, uint256 amount,bytes16 transferRequestId);
 
     constructor(address _burnTokensEscrowAddress) {
         burnTokensEscrow = IBurnTokensEscrow(_burnTokensEscrowAddress);
@@ -29,23 +29,23 @@ contract BurnAndReleaseCoordinator is AccessControl {
         _setupRole(OWNER_ROLE, msg.sender);
     }
 
-    function initateBurnAndRelease(address tokenAddress, address _fromUserAddressOnBinanceChain, uint256 _amount, address _toUserAddressOnEthereumChain) external onlyRole(OWNER_ROLE) {
+    function initateBurnAndRelease(address tokenAddress, address _fromUserAddressOnBinanceChain, uint256 _amount, address _toUserAddressOnEthereumChain,bytes16 transferRequestId) external onlyRole(OWNER_ROLE) {
         // Escrow the tokens before starting the burn process
         try burnTokensEscrow.escrowTokens(_amount, _fromUserAddressOnBinanceChain) {
             // If successful, emit the BurnInitiated event
-            emit BurnInitiated(tokenAddress,_fromUserAddressOnBinanceChain, _amount, _toUserAddressOnEthereumChain);
+            emit BurnInitiated(tokenAddress,_fromUserAddressOnBinanceChain, _amount, _toUserAddressOnEthereumChain, transferRequestId);
         } catch {
             // If escrowTokens fails, emit BurnFailed event and revert transaction
-            emit ReleaseFailed(_fromUserAddressOnBinanceChain, _amount);
+            emit ReleaseFailed(_fromUserAddressOnBinanceChain, _amount, transferRequestId);
             revert("Escrow failed. Burn operation aborted.");
         }
     }
 
-    function releaseCompleted(address _tokenAddress, address _userAddressOnEthereumChain, uint256 _amount, address _fromUserAddressOnBinanceChain) external onlyRole(OWNER_ROLE) {
+    function releaseCompleted(address _tokenAddress, address _userAddressOnEthereumChain, uint256 _amount, address _fromUserAddressOnBinanceChain,bytes16 transferRequestId) external onlyRole(OWNER_ROLE) {
         // Attempt to burn the escrowed tokens
         try burnTokensEscrow.burnTokens(_fromUserAddressOnBinanceChain, _amount) {
             // If successful, emit the ReleaseCompleted event
-            emit TransferCompleted(_fromUserAddressOnBinanceChain,_userAddressOnEthereumChain, _amount,_tokenAddress);
+            emit TransferCompleted(_fromUserAddressOnBinanceChain,_userAddressOnEthereumChain, _amount,_tokenAddress, transferRequestId);
         } catch {
             // If burnTokens fails, revert the transaction
             revert("Burning tokens failed. ReleaseCompleted event not emitted.");
@@ -56,7 +56,7 @@ contract BurnAndReleaseCoordinator is AccessControl {
         // Attempt to return the tokens to the user
         try burnTokensEscrow.returnTokens(_fromUserAddressOnBinanceChain, _amount) {
             // If successful, emit the ReleaseFailed event
-            emit ReturnedTokens(_fromUserAddressOnBinanceChain, _amount);
+            emit ReturnedTokens(_fromUserAddressOnBinanceChain, _amount, transferRequestId);
         } catch {
             // If returnTokens fails, revert the transaction
             revert("Returning tokens failed. ReleaseFailed event not emitted.");

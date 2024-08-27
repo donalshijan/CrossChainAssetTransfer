@@ -8,6 +8,7 @@ bitarray==2.9.2
 certifi==2024.7.4
 charset-normalizer==3.3.2
 ckzg==1.0.2
+click==8.1.7
 cytoolz==0.12.3
 eth-account==0.11.2
 eth-hash==0.7.0
@@ -19,6 +20,7 @@ eth-utils==4.1.1
 eth_abi==5.1.0
 fastapi==0.112.2
 frozenlist==1.4.1
+h11==0.14.0
 hexbytes==0.3.1
 idna==3.7
 jsonschema==4.23.0
@@ -42,6 +44,7 @@ starlette==0.38.2
 toolz==0.12.1
 typing_extensions==4.12.2
 urllib3==2.2.2
+uvicorn==0.30.6
 web3==6.20.1
 websockets==12.0
 yarl==1.9.4

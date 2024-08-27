@@ -52,11 +52,11 @@ def withdraw_fee(contract_instance,web3_instance, method_name, address, private_
     # Wait for the withdraw transaction to be mined
     web3_instance.eth.waitForTransactionReceipt(withdraw_fee_tx_hash)
 
-def mint_tokens_on_bsc(userAddressOnBinanceChain, amount,fromUserAddressOnEthereumChain):
+def mint_tokens_on_bsc(userAddressOnBinanceChain, amount,fromUserAddressOnEthereumChain,transferRequestId):
     
     withdraw_fee(bep20_contract,web3_bsc,'withdrawMintFee',BSC_CONTRACT_OWNER_ADDRESS,BSC_CONTRACT_OWNER_PRIVATE_KEY,'Mint')
     
-    tx = bep20_contract.functions.mint(userAddressOnBinanceChain, amount,fromUserAddressOnEthereumChain).buildTransaction({
+    tx = bep20_contract.functions.mint(userAddressOnBinanceChain, amount,fromUserAddressOnEthereumChain,transferRequestId).buildTransaction({
         'from': BSC_CONTRACT_OWNER_ADDRESS,
         'nonce': web3_bsc.eth.getTransactionCount(BSC_CONTRACT_OWNER_ADDRESS),
         'gas': 2000000,
@@ -67,11 +67,11 @@ def mint_tokens_on_bsc(userAddressOnBinanceChain, amount,fromUserAddressOnEthere
     tx_hash = web3_bsc.eth.sendRawTransaction(signed_tx.rawTransaction)
     print(f'[Relayer] Created Transaction for Minting {amount} tokens for {userAddressOnBinanceChain} on BSC. TxHash: {web3_bsc.toHex(tx_hash)}')
 
-def unlock_tokens_on_ethereum(tokenAddressOfTokenToRelease,userAddressOnEthereumChain, amount,fromUserAddressOnBinanceChain):
+def unlock_tokens_on_ethereum(tokenAddressOfTokenToRelease,userAddressOnEthereumChain, amount,fromUserAddressOnBinanceChain,transferRequestId):
 
     withdraw_fee(erc20_lock_contract,web3_eth,'withdrawReleaseFee',ETH_CONTRACT_OWNER_ADDRESS,ETH_CONTRACT_OWNER_PRIVATE_KEY,'Release')
     
-    tx = erc20_lock_contract.functions.releaseTokens(tokenAddressOfTokenToRelease,userAddressOnEthereumChain, amount,fromUserAddressOnBinanceChain).buildTransaction({
+    tx = erc20_lock_contract.functions.releaseTokens(tokenAddressOfTokenToRelease,userAddressOnEthereumChain, amount,fromUserAddressOnBinanceChain,transferRequestId).buildTransaction({
         'from': ETH_CONTRACT_OWNER_ADDRESS,
         'nonce': web3_eth.eth.getTransactionCount(ETH_CONTRACT_OWNER_ADDRESS),
         'gas': 2000000,
@@ -82,11 +82,11 @@ def unlock_tokens_on_ethereum(tokenAddressOfTokenToRelease,userAddressOnEthereum
     tx_hash = web3_eth.eth.sendRawTransaction(signed_tx.rawTransaction)
     print(f'[Relayer] Created Transaction for Unlocking {amount} tokens for {userAddressOnEthereumChain} on Ethereum. TxHash: {web3_eth.toHex(tx_hash)}')
 
-def initiateBurnAndRelease(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain):
+def initiateBurnAndRelease(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain,transferRequestId):
     
     withdraw_fee(bep20_contract,web3_bsc,'withdrawCoordinatorFees',BSC_CONTRACT_OWNER_ADDRESS,BSC_CONTRACT_OWNER_PRIVATE_KEY,'Coordinator')
 
-    tx = burnAndReleaseContract.functions.initateBurnAndRelease(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain).buildTransaction({
+    tx = burnAndReleaseContract.functions.initateBurnAndRelease(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain,transferRequestId).buildTransaction({
         'from': BURN_AND_RELEASE_COORDINATOR_CONTRACT_OWNER_ADDRESS,
         'nonce': web3_bsc.eth.getTransactionCount(BURN_AND_RELEASE_COORDINATOR_CONTRACT_OWNER_ADDRESS),
         'gas': 2000000,
@@ -97,10 +97,10 @@ def initiateBurnAndRelease(tokenAddress,fromUserAddressOnBinanceChain,amount,toU
     tx_hash = web3_bsc.eth.sendRawTransaction(signed_tx.rawTransaction)
     print(f'[Relayer] Created Transaction for Initiating Burn of {amount} tokens for {fromUserAddressOnBinanceChain} on Binance. TxHash: {web3_bsc.toHex(tx_hash)}')
 
-def releaseCompleted(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain):
+def releaseCompleted(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain,transferRequestId):
     withdraw_fee(bep20_contract,web3_bsc,'withdrawCoordinatorFees',BSC_CONTRACT_OWNER_ADDRESS,BSC_CONTRACT_OWNER_PRIVATE_KEY,'Coordinator')
     
-    tx = burnAndReleaseContract.functions.releaseCompleted(tokenAddress,toUserAddressOnEthereumChain,amount,fromUserAddressOnBinanceChain).buildTransaction({
+    tx = burnAndReleaseContract.functions.releaseCompleted(tokenAddress,toUserAddressOnEthereumChain,amount,fromUserAddressOnBinanceChain,transferRequestId).buildTransaction({
         'from': BURN_AND_RELEASE_COORDINATOR_CONTRACT_OWNER_ADDRESS,
         'nonce': web3_bsc.eth.getTransactionCount(BURN_AND_RELEASE_COORDINATOR_CONTRACT_OWNER_ADDRESS),
         'gas': 2000000,
@@ -111,10 +111,10 @@ def releaseCompleted(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAdd
     tx_hash = web3_bsc.eth.sendRawTransaction(signed_tx.rawTransaction)
     print(f'[Relayer] Created Transaction for Release completion of {amount} tokens for {toUserAddressOnEthereumChain} on Ethereum. TxHash: {web3_bsc.toHex(tx_hash)}')
 
-def releaseFailed(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain):
+def releaseFailed(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain,transferRequestId):
     withdraw_fee(bep20_contract,web3_bsc,'withdrawCoordinatorFees',BSC_CONTRACT_OWNER_ADDRESS,BSC_CONTRACT_OWNER_PRIVATE_KEY,'Coordinator')
     
-    tx = burnAndReleaseContract.functions.releaseFailed(tokenAddress,toUserAddressOnEthereumChain,amount,fromUserAddressOnBinanceChain).buildTransaction({
+    tx = burnAndReleaseContract.functions.releaseFailed(tokenAddress,toUserAddressOnEthereumChain,amount,fromUserAddressOnBinanceChain,transferRequestId).buildTransaction({
         'from': BURN_AND_RELEASE_COORDINATOR_CONTRACT_OWNER_ADDRESS,
         'nonce': web3_bsc.eth.getTransactionCount(BURN_AND_RELEASE_COORDINATOR_CONTRACT_OWNER_ADDRESS),
         'gas': 2000000,
@@ -126,7 +126,7 @@ def releaseFailed(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddres
     print(f'[Relayer] Created Transaction for Release Failure of {amount} tokens for {toUserAddressOnEthereumChain} on Ethereum. TxHash: {web3_bsc.toHex(tx_hash)}')
 
 
-def listen_and_relay():
+def listen_and_relay(logger=None):
     while True:
         # Listen for TokensLocked event on Ethereum
         event_filter_eth = erc20_lock_contract.events.TokensLocked.createFilter(fromBlock='latest')
@@ -136,8 +136,9 @@ def listen_and_relay():
             fromUserAddressOnEthereumChain = event.args.fromUserAddressOnEthereumChain
             amount = event.args.amount
             toUserAddressOnBinanceChain= event.args.toUserAddressOnBinanceChain
+            transferRequestId=event.args.transferRequestId
             print(f'[Relayer] TokensLocked event detected: {fromUserAddressOnEthereumChain} locked {amount}')
-            mint_tokens_on_bsc(toUserAddressOnBinanceChain, amount,fromUserAddressOnEthereumChain)
+            mint_tokens_on_bsc(toUserAddressOnBinanceChain, amount,fromUserAddressOnEthereumChain,transferRequestId)
         # Listen for TokensReleased event on Ethereum
         event_filter_eth_released = erc20_lock_contract.events.TokensReleased.createFilter(fromBlock='latest')
         events_eth_released = event_filter_eth_released.get_new_entries()
@@ -147,10 +148,10 @@ def listen_and_relay():
             amount = event.args.amount
             tokenAddress=event.args.tokenAddress
             fromUserAddressOnBinanceChain = event.args.fromUserAddressOnBinanceChain
+            transferRequestId=event.args.transferRequestId
             print(f'[Relayer] TokensReleased event detected: {toUserAddressOnEthereumChain} released {amount}')
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print(f'[Relayer] {amount} Tokens have been transferred from Binance address {fromUserAddressOnBinanceChain} to Ethereum address {toUserAddressOnEthereumChain} at [{timestamp}]')
-            releaseCompleted(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain)
+            releaseCompleted(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain,transferRequestId)
         
         event_filter_eth_TransferFailed = erc20_lock_contract.events.TokenReleaseFailed.createFilter(fromBlock='latest')
         events_eth_Failed = event_filter_eth_TransferFailed.get_new_entries()
@@ -160,8 +161,9 @@ def listen_and_relay():
             amount = event.args.amount
             tokenAddress=event.args.tokenAddress
             fromUserAddressOnBinanceChain = event.args.fromUserAddressOnBinanceChain
+            transferRequestId=event.args.transferRequestId
             print(f'[Relayer] TokenReleaseFailed event detected')
-            releaseFailed(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain)
+            releaseFailed(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain,transferRequestId)
             
 
         # Listen for Transfer events on BSC
@@ -172,10 +174,13 @@ def listen_and_relay():
             from_address = event.args.fromUserAddresOnEthereumChain
             to_address = event.args.toUserAddressOnBinanceChain
             amount = event.args.amount
+            transferRequestId=event.args.transferRequestId
             # This indicates minting (tokens are created and sent to the 'to' address)
             print(f'[Relayer] TokensMinted event detected: {to_address} received {amount} Tokens')
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print(f'[Relayer] {amount} Tokens have been transferred from Ethereum wallet {from_address} to Binance Wallet {to_address} at [{timestamp}]')
+            if logger:
+                logger.info(f'[Relayer] Transfer of {amount} tokens from Ethereum Address {from_address} to Binance Addres {to_address} completed at [{timestamp}] for the transfer request Id: {transferRequestId}')
+            print(f'[Relayer] Transfer of {amount} tokens from Ethereum Address {from_address} to Binance Addres {to_address} completed at [{timestamp}] for the transfer request Id: {transferRequestId}')
             # Optionally, handle minting logic if needed
             
         event_filter_bsc = bep20_contract.events.TokensTransferInitiated.createFilter(fromBlock='latest')
@@ -186,9 +191,10 @@ def listen_and_relay():
             toUserAddressOnEthereumChain= event.args.toUserAddressOnEthereumChain
             amount = event.args.amount
             tokenAddress=event.args.tokenAddress
+            transferRequestId=event.args.transferRequestId
             # This indicates minting (tokens are created and sent to the 'to' address)
             print(f'[Relayer] TokensTransferInitiated event detected')
-            initiateBurnAndRelease(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain)
+            initiateBurnAndRelease(tokenAddress,fromUserAddressOnBinanceChain,amount,toUserAddressOnEthereumChain,transferRequestId)
 
         event_filter_bsc = burnAndReleaseContract.events.BurnInitiated.createFilter(fromBlock='latest')
         events_bsc = event_filter_bsc.get_new_entries()
@@ -198,9 +204,10 @@ def listen_and_relay():
             toUserAddressOnEthereumChain = event.args.toUserAddressOnEthereumChain
             amount = event.args.amount
             tokenAddress = event.args.tokenAddress
+            transferRequestId=event.args.transferRequestId
             # This indicates minting (tokens are created and sent to the 'to' address)
             print(f'[Relayer] TokensBurnInitiated event detected')
-            unlock_tokens_on_ethereum(tokenAddress,toUserAddressOnEthereumChain, amount,fromUserAddressOnBinanceChain)
+            unlock_tokens_on_ethereum(tokenAddress,toUserAddressOnEthereumChain, amount,fromUserAddressOnBinanceChain,transferRequestId)
             
         event_filter_bsc = burnAndReleaseContract.events.TransferCompleted.createFilter(fromBlock='latest')
         events_bsc = event_filter_bsc.get_new_entries()
@@ -210,9 +217,13 @@ def listen_and_relay():
             toUserAddressOnEthereumChain = event.args.toUserAddressOnEthereumChain
             amount = event.args.amount
             tokenAddress = event.args.tokenAddress
+            transferRequestId=event.args.transferRequestId
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             # This indicates minting (tokens are created and sent to the 'to' address)
             print(f'[Relayer] TransferCompleted event detected')
-            print(f'[Relayer] Transfer of {amount} tokens from Binance Address {fromUserAddressOnBinanceChain} to Ethereum Address {toUserAddressOnEthereumChain} into {tokenAddress} token completed')
+            if logger:
+                logger.info(f'[Relayer] Transfer of {amount} tokens from Binance Address {fromUserAddressOnBinanceChain} to Ethereum Address {toUserAddressOnEthereumChain} into {tokenAddress} token completed at [{timestamp}] for the transfer request Id: {transferRequestId}')
+            print(f'[Relayer] Transfer of {amount} tokens from Binance Address {fromUserAddressOnBinanceChain} to Ethereum Address {toUserAddressOnEthereumChain} into {tokenAddress} token completed at [{timestamp}] for the transfer request Id: {transferRequestId}')
             
         event_filter_bsc = burnAndReleaseContract.events.ReturnedTokens.createFilter(fromBlock='latest')
         events_bsc = event_filter_bsc.get_new_entries()
@@ -220,9 +231,10 @@ def listen_and_relay():
         for event in events_bsc:
             toUserAddressOnBinanceChain = event.args.toUserAddressOnBinanceChain
             amount = event.args.amount
+            transferRequestId=event.args.transferRequestId
             # This indicates minting (tokens are created and sent to the 'to' address)
             print(f'[Relayer] ReturnedTokens event detected')
             print(f'[Relayer] {amount} tokens Returned to {toUserAddressOnBinanceChain}')
 
 if __name__ == '__main__':
-    listen_and_relay()
+    listen_and_relay(logger=None)
