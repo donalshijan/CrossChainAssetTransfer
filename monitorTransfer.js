@@ -1,7 +1,6 @@
 const { EventEmitter } = require('events');
 const fs = require('fs');
 const path = require('path');
-
 // Event emitter for monitoring logs
 const logMonitor = new EventEmitter();
 
@@ -9,7 +8,8 @@ const logMonitor = new EventEmitter();
 const transferStatusMap = new Map();
 
 // Function to monitor log files for transfer events
-function monitorInitialTransferLogs(logFilePath) {
+function monitorTransferLogs(logFilePath,num_of_transfers) {
+    transferStatusMap.clear();
     let logStream;
 
     function startReadingLog() {
@@ -32,7 +32,7 @@ function monitorInitialTransferLogs(logFilePath) {
                     if (transferStatusMap.has(transferRequestId)) {
                         transferStatusMap.set(transferRequestId, true);
                         console.log(`Transfer completed: ${transferRequestId}`);
-                        checkIfAllCompleted();
+                        checkIfAllCompleted(num_of_transfers);
                     }
                     continue;
                 }
@@ -51,7 +51,10 @@ function monitorInitialTransferLogs(logFilePath) {
 }
 
 // Function to check if all transfers are completed
-function checkIfAllCompleted() {
+function checkIfAllCompleted(num_of_transfers) {
+    if (transferStatusMap.size !== num_of_transfers) {
+        return; // If the number of transfers doesn't match, exit the function
+    }
     const allCompleted = Array.from(transferStatusMap.values()).every(status => status === true);
     if (allCompleted) {
         console.log("All transfers completed.");
@@ -67,6 +70,6 @@ function waitForAllTransfersToComplete() {
 }
 
 module.exports = {
-    monitorInitialTransferLogs,
+    monitorTransferLogs,
     waitForAllTransfersToComplete,
 };

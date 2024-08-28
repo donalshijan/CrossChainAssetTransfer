@@ -2,6 +2,9 @@ from web3 import Web3
 import os
 from dotenv import load_dotenv
 from datetime import datetime
+import time
+from utils.filelock import acquire_lock
+from utils.filelock import release_lock
 
 # Load environment variables
 load_dotenv()
@@ -178,8 +181,11 @@ def listen_and_relay(logger=None):
             # This indicates minting (tokens are created and sent to the 'to' address)
             print(f'[Relayer] TokensMinted event detected: {to_address} received {amount} Tokens')
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            if logger:
-                logger.info(f'[Relayer] Transfer of {amount} tokens from Ethereum Address {from_address} to Binance Addres {to_address} completed at [{timestamp}] for the transfer request Id: {transferRequestId}')
+            while not acquire_lock():
+                print('Lock is held by another process. Retrying...')
+                time.sleep(1)
+            logger.info(f'[Relayer] Transfer of {amount} tokens from Ethereum Address {from_address} to Binance Addres {to_address} completed at [{timestamp}] for the transfer request Id: {transferRequestId}')
+            release_lock()
             print(f'[Relayer] Transfer of {amount} tokens from Ethereum Address {from_address} to Binance Addres {to_address} completed at [{timestamp}] for the transfer request Id: {transferRequestId}')
             # Optionally, handle minting logic if needed
             
@@ -221,8 +227,11 @@ def listen_and_relay(logger=None):
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             # This indicates minting (tokens are created and sent to the 'to' address)
             print(f'[Relayer] TransferCompleted event detected')
-            if logger:
-                logger.info(f'[Relayer] Transfer of {amount} tokens from Binance Address {fromUserAddressOnBinanceChain} to Ethereum Address {toUserAddressOnEthereumChain} into {tokenAddress} token completed at [{timestamp}] for the transfer request Id: {transferRequestId}')
+            while not acquire_lock():
+                print('Lock is held by another process. Retrying...')
+                time.sleep(1)
+            logger.info(f'[Relayer] Transfer of {amount} tokens from Binance Address {fromUserAddressOnBinanceChain} to Ethereum Address {toUserAddressOnEthereumChain} into {tokenAddress} token completed at [{timestamp}] for the transfer request Id: {transferRequestId}')
+            release_lock()
             print(f'[Relayer] Transfer of {amount} tokens from Binance Address {fromUserAddressOnBinanceChain} to Ethereum Address {toUserAddressOnEthereumChain} into {tokenAddress} token completed at [{timestamp}] for the transfer request Id: {transferRequestId}')
             
         event_filter_bsc = burnAndReleaseContract.events.ReturnedTokens.createFilter(fromBlock='latest')

@@ -1,7 +1,10 @@
 const { ethers } = require("ethers");
 const { v4: uuidv4 } = require('uuid');
+const winston = require('winston');
+const fs = require('fs');
 require("dotenv").config();
 const axios = require("axios");
+const { acquireLock, releaseLock } = require('./filelock');
 
 // Infura/Node URLs for Ethereum and Binance Smart Chain
 const ETHEREUM_NODE_URL = process.env.ETHEREUM_NODE_URL;
@@ -35,6 +38,49 @@ const erc20TokenContract = new ethers.Contract(ERC20_TOKEN_TO_TRANSFER_ADDRESS, 
 const erc20LockContract = new ethers.Contract(ERC20_LOCK_ADDRESS, ERC20_LOCK_ABI, ethWallet);
 const bep20Contract = new ethers.Contract(BEP20_ADDRESS, BEP20_ABI, bscWallet);
 
+// Setup logger with a lockfile
+const logFilePath = './transfers.log';
+const lockFilePath = logFilePath + '.log.lock';
+
+// Ensure the log file exists
+if (!fs.existsSync(logFilePath)) {
+    fs.writeFileSync(logFilePath, '');
+}
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+      winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+      winston.format.printf(info => `${info.timestamp} - ${info.level.toUpperCase()}: ${info.message}`)
+  ),
+  transports: [
+      new winston.transports.File({ filename: logFilePath })
+  ]
+});
+
+function logMessage(message) {
+  acquireLock((err, acquired) => {
+    if (err) {
+      console.error('Failed to acquire lock:', err);
+      return;
+    }
+
+    if (acquired) {
+      // Log the message once the lock is acquired
+      logger.info(message);
+
+      // Release the lock after logging
+      releaseLock((err) => {
+        if (err) {
+          console.error('Failed to release lock:', err);
+        }
+      });
+    } else {
+      console.log('Lock is held by another process. Retrying...');
+      setTimeout(() => logMessage(message), 1000); // Retry after 1 second
+    }
+  });
+}
 async function approveTransfer(contract, method, spender, amount) {
     const tx = await contract[method](spender, amount);
     const receipt = await tx.wait();
@@ -125,6 +171,7 @@ async function transferTokens(fromChainUserAddress, toChainUserAddress, amount, 
         const timestamp = new Date().toISOString();
         console.log(`Tokens Lock called on Ethereum. TxHash: ${tx.hash}`);
         console.log(`Token Transfer for ${amount} tokens of ${tokenContractAddress} from Ethereum  address ${fromChainUserAddress} to Binance  address ${toChainUserAddress} initiated at [${timestamp}] with Transfer request id [${transferRequestId}]`)
+        logMessage(`Token Transfer for ${amount} tokens of ${tokenContractAddress} from Ethereum  address ${fromChainUserAddress} to Binance  address ${toChainUserAddress} initiated at [${timestamp}] with Transfer request id [${transferRequestId}]`);
         await tx.wait();
 
     } else if (direction === "bsc_to_eth") {
@@ -142,6 +189,7 @@ async function transferTokens(fromChainUserAddress, toChainUserAddress, amount, 
         const timestamp = new Date().toISOString();
         console.log(`Tokens Burn called on BSC. TxHash: ${tx.hash} at [${timestamp}]`);
         console.log(`Token Transfer for ${amount} tokens from Binance  address ${fromChainUserAddress} to Ethereum  address ${toChainUserAddress} into   ${tokenContractAddress} tokens initiated at [${timestamp}] with Transfer request id [${transferRequestId}]`)
+        logMessage(`Token Transfer for ${amount} tokens from Binance  address ${fromChainUserAddress} to Ethereum  address ${toChainUserAddress} into   ${tokenContractAddress} tokens initiated at [${timestamp}] with Transfer request id [${transferRequestId}]`)
         await tx.wait();
     }
 }

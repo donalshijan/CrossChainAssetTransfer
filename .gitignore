@@ -32,3 +32,4 @@ logs/
 *.pid
 *.seed
 *.pid.lock
+*.log.lock

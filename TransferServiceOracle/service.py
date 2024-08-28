@@ -79,7 +79,7 @@ def start_services():
     receipt_thread = threading.Thread(target=start_event_listeners, daemon=True)
     receipt_thread.start()
 
-    logger = setup_logger(log_file='relayer.log')
+    logger = setup_logger(log_file='./transfers.log')
     # Starting relayer Service in a new thread
     relayer_thread = threading.Thread(target=lambda: listen_and_relay(logger), daemon=True)
     relayer_thread.start()
