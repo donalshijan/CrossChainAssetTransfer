@@ -1,15 +1,20 @@
 const { EventEmitter } = require('events');
 const fs = require('fs');
 const path = require('path');
+const { updateProgressBar } = require('./progressTracker'); // Import the progress tracker
 // Event emitter for monitoring logs
 const logMonitor = new EventEmitter();
 
 // Map to track the completion status of each transfer request
 const transferStatusMap = new Map();
 
+
+
+
 // Function to monitor log files for transfer events
 function monitorTransferLogs(logFilePath,num_of_transfers) {
     transferStatusMap.clear();
+    
     let logStream;
 
     function startReadingLog() {
@@ -31,6 +36,7 @@ function monitorTransferLogs(logFilePath,num_of_transfers) {
                     const transferRequestId = completedMatch[1];
                     if (transferStatusMap.has(transferRequestId)) {
                         transferStatusMap.set(transferRequestId, true);
+                        updateProgressBar(); // Update the progress bar
                         console.log(`Transfer completed: ${transferRequestId}`);
                         checkIfAllCompleted(num_of_transfers);
                     }

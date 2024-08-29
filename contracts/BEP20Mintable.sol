@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 
-
-contract BEP20Mintable is ERC20, Ownable,AccessControl {
+contract BEP20Mintable is ERC20, AccessControl, Ownable {
     uint256 public mintFee; // Fee required to mint tokens
     mapping(address => uint256) public mintFeesCollected; // Mapping to track fees paid by each user
     mapping(address => uint256) private nonces;
@@ -18,22 +18,20 @@ contract BEP20Mintable is ERC20, Ownable,AccessControl {
 
     // Define roles
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
-    bytes32 public constant DEFAULT_ADMIN_ROLE = keccak256("DEFAULT_ADMIN_ROLE");
 
-    constructor(string memory name, string memory symbol, uint256 _mintFee,address _ethContractOwner) ERC20(name, symbol) {
+    constructor(string memory name, string memory symbol, uint256 _mintFee,address _ethContractOwner,uint256 _coordinatorFee) ERC20(name, symbol) Ownable(msg.sender) {
         mintFee = _mintFee;
         ethContractOwner=_ethContractOwner;
         coordinatorFee = _coordinatorFee;
 
         // Set up the roles
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(OWNER_ROLE, msg.sender);
+        grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        grantRole(OWNER_ROLE, msg.sender);
     }
 
     event TokensTransferInitiated(address indexed fromUserAddressOnBinanceChain, uint256 amount, address toUserAddressOnEthereumChain,address tokenAddress,bytes16 transferRequestId);
     event TokensMinted(address indexed toUserAddressOnBinanceChain, uint256 amount, address fromUserAddresOnEthereumChain,bytes16 transferRequestId);
     event MintFeePaid(address indexed payer, uint256 mintFeeAmount, uint256 nonce,address contractAddress, uint256 userTimestamp, bytes32 receiptMessage );
-    event Approval(address indexed owner, address indexed spender, uint256 value);
     
     // Function for users to pay mint fee
     function payMintFee(uint256 userTimestamp) external payable {
@@ -58,17 +56,16 @@ contract BEP20Mintable is ERC20, Ownable,AccessControl {
         emit TokensMinted(_toUserAddressOnBinanceChain, _amount, _fromUserAddressOnEthereumChain, transferRequestId);
     }
 
-    function burn(address _fromUserAddressOnBinanceChain, uint256 _amount, address _toUserAddressOnEthereumChain,address tokenAddress,uint256 releaseFeeAmount,uint256 nonce, address contractAddress,bytes memory receipt,bytes16 transferRequestId) external {
+    function burn(address _fromUserAddressOnBinanceChain, uint256 _amount, address _toUserAddressOnEthereumChain,address tokenAddress,uint256 releaseFeeAmount,uint256 nonce, address contractAddress,bytes memory receipt,bytes16 transferRequestId) external payable{
         // Check that the receipt has not been used before
         require(!usedReceipts[msg.sender][nonce], "Receipt already used");
         // Ensure the signer is the owner of the BSC contract (or another authorized address)
-        require(verifyReceipt(_toUserAddressOnBinanceChain, releaseFeeAmount, nonce,contractAddress, receipt), "Invalid receipt");
+        require(verifyReceipt(_toUserAddressOnEthereumChain, releaseFeeAmount, nonce,contractAddress, receipt), "Invalid receipt");
         // Mark the receipt as used
         usedReceipts[msg.sender][nonce] = true;
         require(balanceOf(_fromUserAddressOnBinanceChain) >= _amount, "Insufficient balance to burn");
         // Check if the contract has been approved to transfer tokens on behalf of the user
-        uint256 allowance = bep20Token.allowance(_fromUserAddressOnBinanceChain, burnEscrowTokenContractAddress);
-        require(allowance >= _amount, "Insufficient allowance to transfer tokens");
+        require(this.allowance(_fromUserAddressOnBinanceChain, burnEscrowTokenContractAddress) >= _amount, "Insufficient allowance to transfer tokens");
         require(msg.value >= 3*coordinatorFee, "Insufficient Coordinator fee paid");
         emit TokensTransferInitiated(_fromUserAddressOnBinanceChain, _amount, _toUserAddressOnEthereumChain,tokenAddress, transferRequestId);
     }
@@ -78,23 +75,23 @@ contract BEP20Mintable is ERC20, Ownable,AccessControl {
     }
     
 
-    function approve(address spender, uint256 amount) external returns (bool) {
-        address owner = msg.sender;
-        _approve(owner, spender, amount);
-        return true;
-    }
+    // function approve(address spender, uint256 amount) public override returns (bool) {
+    //     address owner = msg.sender;
+    //     _approve(owner, spender, amount);
+    //     return true;
+    // }
 
-    function _approve(address owner, address spender, uint256 amount) internal {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
+    // function _approve(address owner, address spender, uint256 amount) internal {
+    //     require(owner != address(0), "ERC20: approve from the zero address");
+    //     require(spender != address(0), "ERC20: approve to the zero address");
 
-        _allowances[owner][spender] = amount;
-        emit Approval(owner, spender, amount);
-    }
+    //     _allowances[owner][spender] = amount;
+    //     emit Approval(owner, spender, amount);
+    // }
 
-    function allowance(address owner, address spender) external view returns (uint256) {
-        return _allowances[owner][spender];
-    }
+    // function allowance(address owner, address spender) external view returns (uint256) {
+    //     return _allowances[owner][spender];
+    // }
     // Function to set the mint fee, only callable by the owner
     function setMintFee(uint256 _mintFee) external onlyOwner {
         mintFee = _mintFee;

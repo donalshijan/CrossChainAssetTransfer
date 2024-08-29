@@ -1,11 +1,13 @@
 const { ethers } = require("ethers");
 const { transfer } = require("./transfer"); // Replace with the actual path to your transfer script
 const { monitorTransferLogs, waitForAllTransfersToComplete } = require('./monitorTransfer.js');
+const { initializeProgressBar, completeProgressBar } = require('./progressTracker.js');
 require("dotenv").config();
 
 // Number of times to perform the transfer
 const NUM_INITIAL_TRANSFERS = 5;
-const NUM_TRANSFERS = 5;
+const NUM_TRANSFERS = 10;
+
 
 // Addresses and amounts for testing
 const ETH_CONTRACT_USER_ADDRESS = ethers.utils.getAddress(process.env.ETH_CONTRACT_USER_ADDRESS);
@@ -20,7 +22,7 @@ const AMOUNT = ethers.utils.parseUnits("0.01", 18); // The amount to transfer (r
 
 // Log file paths
 const logFilePath = './transfers.log';
-const resultsFilePath = './testPerformanceAndCostEvaluationResults.txt';
+const resultsFilePath = './PerformanceAndCostEvaluationResults.txt';
 
 async function makeTestTransfers(numTransfers) {
     for (let i = 0; i < numTransfers; i++) {
@@ -86,13 +88,14 @@ async function transferToPopulateBscAddressWithMintedTokens(numTransfers) {
 }
 
 // Run the transfer to populate BSC address with some minted tokens and then make the test transfers and log info and use it to evaluate performance and cost
-(async () => {
+(async (num_of_transfers) => {
     let stopMonitoringInitialTransfers;
     let stopMonitoringTestTransfers;
     try {
+        initializeProgressBar(num_of_transfers);
         // Start monitoring logs
-        stopMonitoringInitialTransfers = monitorTransferLogs('./transfers.log',NUM_INITIAL_TRANSFERS);
-        await transferToPopulateBscAddressWithMintedTokens(NUM_INITIAL_TRANSFERS);
+        stopMonitoringInitialTransfers = monitorTransferLogs('./transfers.log',num_of_transfers);
+        await transferToPopulateBscAddressWithMintedTokens(num_of_transfers);
         // Wait until the transfer is confirmed
         await waitForAllTransfersToComplete();
         // Stop monitoring logs
@@ -119,8 +122,8 @@ async function transferToPopulateBscAddressWithMintedTokens(numTransfers) {
         fs.writeFileSync(resultsFilePath, balancesLog);
 
         // 3. Make the transfers
-        stopMonitoringTestTransfers = monitorTransferLogs('./transfers.log',NUM_TRANSFERS);
-        await makeTestTransfers(NUM_TRANSFERS);
+        stopMonitoringTestTransfers = monitorTransferLogs('./transfers.log',2*num_of_transfers);
+        await makeTestTransfers(num_of_transfers);
         await waitForAllTransfersToComplete();
         stopMonitoringTestTransfers();
         // 4. Parse the transfers.log file to extract transfer request IDs and timestamps
@@ -181,6 +184,8 @@ async function transferToPopulateBscAddressWithMintedTokens(numTransfers) {
         Final BNB Balance of Owner of Binance Chain Contracts: ${bscBalanceFormatted} BNB
         `;
         fs.appendFileSync(resultsFilePath, balancesLog);
+        // Once all transfers are done and result logs made, ensure the progress bar is completed
+        completeProgressBar();
         process.exit(0); // Exit the process successfully
     } catch (error) {
         console.error("Error running ETH to BSC transfers:", error);
@@ -189,4 +194,4 @@ async function transferToPopulateBscAddressWithMintedTokens(numTransfers) {
         if (stopMonitoringTestTransfers) stopMonitoringTestTransfers();
         process.exit(1); // Exit the process with an error
     }
-})();
+})(parseInt(process.argv[2], 10));

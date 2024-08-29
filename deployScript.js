@@ -29,6 +29,7 @@ async function deployContractsForBSC() {
         "TOKEN",
         ethers.utils.parseEther("0.01"),
         process.env.ETH_CONTRACT_OWNER_ADDRESS,
+        ethers.utils.parseEther("0.01"),
     ])).address;
 
     burnTokenEscrowContractAddress = (await deployContract("BurnTokensEscrow", [], async (burnTokensEscrowContract) => {

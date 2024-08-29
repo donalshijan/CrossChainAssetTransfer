@@ -22,7 +22,8 @@ async function deployBEP20Mintable() {
 
     const BEP20Mintable = await ethers.getContractFactory("BEP20Mintable");
     const mintFee = ethers.utils.parseEther("0.01"); 
-    const bep20Mintable = await BEP20Mintable.deploy("Token Name", "TOKEN",mintFee,process.env.ETH_CONTRACT_OWNER_ADDRESS);
+    const coordinatorFee = ethers.utils.parseEther("0.01"); 
+    const bep20Mintable = await BEP20Mintable.deploy("Token Name", "TOKEN",mintFee,process.env.ETH_CONTRACT_OWNER_ADDRESS,coordinatorFee);
     await bep20Mintable.deployed();
     console.log("BEP20Mintable deployed to:", bep20Mintable.address);
     bep20ContractAddress=bep20Mintable.address;

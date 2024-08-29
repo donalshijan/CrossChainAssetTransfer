@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -10,10 +10,10 @@ contract BurnTokensEscrow is Ownable {
     address private constant BURN_ADDRESS = 0x0000000000000000000000000000000000000000; // or a dedicated burn address
     
 
-    constructor() {
+    constructor() Ownable(msg.sender){
     }
 
-    function escrowTokens(uint256 _amount,fromUserAddressOnBinanceChain) external onlyOwner{
+    function escrowTokens(uint256 _amount,address fromUserAddressOnBinanceChain) external onlyOwner{
         require(bep20Token.transferFrom(fromUserAddressOnBinanceChain, address(this), _amount), "Transfer failed");
         escrowBalances[fromUserAddressOnBinanceChain] += _amount;
     }

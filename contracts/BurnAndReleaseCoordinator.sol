@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
+pragma solidity ^0.8.20;
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 
@@ -10,7 +10,7 @@ interface IBurnTokensEscrow {
     function burnTokens(address _userAddress, uint256 _amount) external;
 }
 
-contract BurnAndReleaseCoordinator is AccessControl {
+contract BurnAndReleaseCoordinator is AccessControl,Ownable {
     IBurnTokensEscrow public burnTokensEscrow;
 
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
@@ -21,12 +21,12 @@ contract BurnAndReleaseCoordinator is AccessControl {
     event ReleaseFailed(address indexed fromUserAddressOnBinanceChain, uint256 amount,bytes16 transferRequestId);
     event ReturnedTokens(address toUserAddressOnBinanceChain, uint256 amount,bytes16 transferRequestId);
 
-    constructor(address _burnTokensEscrowAddress) {
+    constructor(address _burnTokensEscrowAddress) Ownable(msg.sender) {
         burnTokensEscrow = IBurnTokensEscrow(_burnTokensEscrowAddress);
 
         // Set up the roles
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(OWNER_ROLE, msg.sender);
+        grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        grantRole(OWNER_ROLE, msg.sender);
     }
 
     function initateBurnAndRelease(address tokenAddress, address _fromUserAddressOnBinanceChain, uint256 _amount, address _toUserAddressOnEthereumChain,bytes16 transferRequestId) external onlyRole(OWNER_ROLE) {
@@ -52,7 +52,7 @@ contract BurnAndReleaseCoordinator is AccessControl {
         }
     }
 
-    function releaseFailed(address _tokenAddress, address _userAddressOnEthereumChain, uint256 _amount, address _fromUserAddressOnBinanceChain) external onlyRole(OWNER_ROLE) {
+    function releaseFailed(address _tokenAddress, address _userAddressOnEthereumChain, uint256 _amount, address _fromUserAddressOnBinanceChain,bytes16 transferRequestId) external onlyRole(OWNER_ROLE) {
         // Attempt to return the tokens to the user
         try burnTokensEscrow.returnTokens(_fromUserAddressOnBinanceChain, _amount) {
             // If successful, emit the ReleaseFailed event

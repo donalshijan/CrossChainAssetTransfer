@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -19,7 +19,7 @@ contract ERC20Lock is Ownable {
     event TokenReleaseFailed(address indexed toUserAddressOnEthereumChain, address indexed tokenAddress, uint256 amount, address fromUserAddressOnBinanceChain,bytes16 transferRequestId);
     event ReleaseFeePaid(address indexed payer, uint256 releaseFeeAmount,uint256 nonce,address contractAddress, uint256 userTimestamp, bytes32 receiptMessage );
 
-    constructor(address[] memory _tokens, uint256 _releaseFee,address _bscContractOwner) {
+    constructor(address[] memory _tokens, uint256 _releaseFee,address _bscContractOwner) Ownable(msg.sender) {
         for (uint i = 0; i < _tokens.length; i++) {
             tokenByAddress[_tokens[i]] = IERC20(_tokens[i]);
         }

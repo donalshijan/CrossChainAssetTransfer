@@ -1,8 +1,10 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import * as dotenv from 'dotenv';
+dotenv.config();
 
-require('@nomiclabs/hardhat-ethers');
-require('@nomiclabs/hardhat-etherscan'); // Import Etherscan plugin
+// require('@nomiclabs/hardhat-ethers');
+// require('@nomiclabs/hardhat-etherscan'); // Import Etherscan plugin
 
 if (!process.env.ETHERSCAN_API_KEY) {
   throw new Error("Missing ETHERSCAN_API_KEY in environment variables");
@@ -13,7 +15,7 @@ if (!process.env.BSCSCAN_API_KEY) {
 }
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.0",
+  solidity: "0.8.20",
   networks: {
     hardhat: {},
     ethereum_sepolia: {
