@@ -8,6 +8,11 @@ import uuid
 # Load environment variables
 load_dotenv()
 
+def load_abi(file_path):
+    with open(file_path, 'r') as file:
+        contract_json = json.load(file)
+        return contract_json['abi']
+
 # Infura/Node URLs for Ethereum and Binance Smart Chain
 ETHEREUM_NODE_URL = os.getenv('ETHEREUM_NODE_URL')
 BSC_NODE_URL = os.getenv('BSC_NODE_URL')
@@ -24,9 +29,9 @@ web3_eth = Web3(Web3.HTTPProvider(ETHEREUM_NODE_URL))
 web3_bsc = Web3(Web3.HTTPProvider(BSC_NODE_URL))
 
 # ABI and contract addresses (Replace with actual ABI and contract addresses)
-ERC20_LOCK_ABI = [...]  # Replace with the ABI of your ERC20Lock contract
+ERC20_LOCK_ABI = load_abi('./artifacts/contracts/ERC20Lock.sol/ERC20Lock.json')  # Replace with the ABI of your ERC20Lock contract
 ERC20_LOCK_ADDRESS = os.getenv('ERC20_LOCK_ADDRESS')
-BEP20_ABI = [...]  # Replace with the ABI of your BEP20Mintable contract
+BEP20_ABI = load_abi('./artifacts/contracts/BEP20Mintable.sol/BEP20Mintable.json')  # Replace with the ABI of your BEP20Mintable contract
 BEP20_ADDRESS = os.getenv('BEP20_MINTABLE_ADDRESS')
 BURN_ESCROW_ADDRESS = os.getenv('BURN_ESCROW_ADDRESS')
 

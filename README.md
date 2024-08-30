@@ -30,10 +30,46 @@ This service keeps monitoring the estimated gas cost for calls for which fee nee
 
 # How to Run 
 
-Compile the contracts by running
+## Install all Dependencies
 
-`npx hardhat compile
-`
+```
+python3 -m venv venv
+source venv/bin/activate
+venv\Scripts\activate
+pip install -r requirements.txt
+deactivate
+
+npm install
+```
+
+## Compile the contracts by running
+
+    npx hardhat compile
+
+
+## Set up environment variables
+
+Create a .env file at the root of the project folder and add following environment variables
+
+    ETHERSCAN_API_KEY = <create an account on etherscan and get this api key>
+    BSCSCAN_API_KEY = <create an account on bscscan and get this api key>
+    ETHEREUM_NODE_URL = <use any node url for any of the ethereum rpc client>
+    BSC_NODE_URL = <use any node url for any of the BSC rpc client>
+    ETH_CONTRACT_OWNER_PRIVATE_KEY = < You will be deploying ethereum smart contract with this account>
+    BSC_CONTRACT_OWNER_PRIVATE_KEY = < You will be deploying your BSC smart contracts with this account>
+    ETH_CONTRACT_OWNER_ADDRESS = <wallet address of the account you used to deploy the ethereum smart contract>
+    BSC_CONTRACT_OWNER_ADDRESS = <wallet address of the account you used to deploy your BSC smart contracts>
+    ERC20_LOCK_ADDRESS = <address of the ERC20_Lock contract after deploying>
+    BEP20_MINTABLE_ADDRESS = <address of the BEP20_Mintable contract after deploying>
+    BURN_AND_RELEASE_COORDINATOR_ADDRESS = <address of the BurnAndReleaseCoordinator contract after deploying>
+
+    // All environment variables mentioned above are essential for contracts to be deployed and the transfer service to run, all environment variables after this is for running test specific scripts and script for interacting with the service in general.
+
+    ERC20_TOKEN_TO_TRANSFER_ADDRESS = <contract address of the ERC20 token that you wish to transfer from Ethereum chain to BSC>
+    ETH_CONTRACT_USER_PRIVATE_KEY= <private key of the user's eth account using the transfer service to transfer from Eth chain to BSC by interacting with ETH contract, used for running the test, but also used for interacting and doing transfers in general>
+    BSC_CONTRACT_USER_PRIVATE_KEY= <private key of the user's BSC account using the transfer service to transfer from BSC  to Eth Chain by interacting with BSC contracts, used for running the test, but also used for interacting and doing transfers in general>
+    ETH_CONTRACT_USER_ADDRESS= <wallet address of user using the transfer service and calling the eth contract for transfer from eth to bsc>
+    BSC_CONTRACT_USER_ADDRESS= <wallet address of user using the transfer service and calling the BSC contract for transfer from BSC to ETH>
 
 
 ## Commands to deploy contracts to testnet 
@@ -43,26 +79,37 @@ Compile the contracts by running
 npx hardhat run deploy.js --network ethereum_sepolia
 npx hardhat run deploy.js --network bsc_testnet
 ```
+
+
 ## Start services and run test
+
+At this point you need to make sure you have funded the accounts which were used to deploy contracts with test ether and bnb from faucets, also fund the accounts which will involve in the testing with test ether and bnb from faucets to run the test.
+
+Set up the .env file with appropriate variables and values, and also set up the value for contract abi for the ERC20 token contract in the transfer.js/transfer.py script,this is the token you intend to transfer.
+
+The line
+`const ERC20_TOKEN_TO_TRANSFER_ABI = [...];` of the transfer.js file need to be provided with correct abi of erc20 token user wishes to transfer.
+
+After that run
 
 ```
 chmod +x start_services_and_run_test.sh 
 bash start_services_and_run_test.sh
 ```
-    This will start all the services and run a test which will make a bunch of transfer calls and monitor logs and evaluate the performance and cost of making transfers and output the results in a file called PerformanceAndCostEvaluationResults.txt.
+This will start all the services and run a test which will make a bunch of transfer calls and monitor logs and evaluate the performance and cost of making transfers and output the results in a file called PerformanceAndCostEvaluationResults.txt.
     
-    The test will take a while which is why it has a progress bar to indicate how far into the transfers are we currently in, and indicates us when the transfers have finished and the PerformanceAndCostEvaluationResults.txt is ready with final results.
+The test will take a while which is why it has a progress bar to indicate how far into the transfers are we currently in, and indicates us when the transfers have finished and the PerformanceAndCostEvaluationResults.txt is ready with final results.
 
 ## Start services
 
-To simply start all the services you need to 
+To simply start all the services, you need to 
 
-`cd TransferServiceOracle`
+    cd TransferServiceOracle
 
 and then run
 
-`python3 service.py`
+    python3 service.py
 
 To interact and make transfers
 
-    You can use either the transfer.js or transfer.py script, which is a demo script to interact with the service to make transfer calls, a user can write their own script to interact with the contracts, obviously, but this is an example of how a typical interaction script should look like as it involves all the necessary actions to be taken on user's part.
+You can use either the transfer.js or transfer.py script, which is a demo script to interact with the service to make transfer calls, a user can write their own script to interact with the contracts, obviously, but this is an example of how a typical interaction script should look like as it involves all the necessary actions to be taken on user's part.

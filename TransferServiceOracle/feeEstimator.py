@@ -1,4 +1,5 @@
 from web3 import Web3
+import json
 import os
 import time
 import threading
@@ -8,6 +9,11 @@ from service import stop_flag
 # Load environment variables
 load_dotenv()
 
+def load_abi(file_path):
+    with open(file_path, 'r') as file:
+        contract_json = json.load(file)
+        return contract_json['abi']
+    
 # Infura/Node URLs for Ethereum and Binance Smart Chain
 ETHEREUM_NODE_URL = os.getenv('ETHEREUM_NODE_URL')
 BSC_NODE_URL = os.getenv('BSC_NODE_URL')
@@ -20,13 +26,13 @@ ETH_CONTRACT_OWNER_ADDRESS = os.getenv('ETH_CONTRACT_OWNER_ADDRESS')
 BSC_CONTRACT_OWNER_ADDRESS = os.getenv('BSC_CONTRACT_OWNER_ADDRESS')
 
 # Contract addresses and ABI (replace with actual values)
-ERC20_LOCK_ABI = [...]  # Replace with your ERC20Lock contract ABI
+ERC20_LOCK_ABI = load_abi('../artifacts/contracts/ERC20Lock.sol/ERC20Lock.json')  # Replace with your ERC20Lock contract ABI
 ERC20_LOCK_ADDRESS = os.getenv('ERC20_LOCK_ADDRESS')
 
-BEP20_ABI = [...]  # Replace with your BEP20Mintable contract ABI
+BEP20_ABI = load_abi('../artifacts/contracts/BEP20Mintable.sol/BEP20Mintable.json') # Replace with your BEP20Mintable contract ABI
 BEP20_ADDRESS = os.getenv('BEP20_MINTABLE_ADDRESS')
 
-BURN_AND_RELEASE_COORDINATOR_ABI = [...]  # Replace with your coordinator contract ABI
+BURN_AND_RELEASE_COORDINATOR_ABI = load_abi('../artifacts/contracts/BurnAndReleaseCoordinator.sol/BurnAndReleaseCoordinator.json')  # Replace with your coordinator contract ABI
 BURN_AND_RELEASE_COORDINATOR_ADDRESS = os.getenv('BURN_AND_RELEASE_COORDINATOR_ADDRESS')
 
 # Initialize Web3 instances
@@ -37,6 +43,8 @@ web3_bsc = Web3(Web3.HTTPProvider(BSC_NODE_URL))
 erc20_lock_contract = web3_eth.eth.contract(address=ERC20_LOCK_ADDRESS, abi=ERC20_LOCK_ABI)
 bep20_contract = web3_bsc.eth.contract(address=BEP20_ADDRESS, abi=BEP20_ABI)
 burn_and_release_contract = web3_eth.eth.contract(address=BURN_AND_RELEASE_COORDINATOR_ADDRESS, abi=BURN_AND_RELEASE_COORDINATOR_ABI)
+
+
 
 def update_gas_fee(contract,web3_instance, function_name, address,privatekey, fee):
     

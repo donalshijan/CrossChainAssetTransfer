@@ -2,6 +2,7 @@ const { ethers } = require("ethers");
 const { v4: uuidv4 } = require('uuid');
 const winston = require('winston');
 const fs = require('fs');
+const path = require('path');
 require("dotenv").config();
 const axios = require("axios");
 const { acquireLock, releaseLock } = require('./filelock');
@@ -25,9 +26,9 @@ const ethWallet = new ethers.Wallet(ETH_CONTRACT_USER_PRIVATE_KEY, ethProvider);
 const bscWallet = new ethers.Wallet(BSC_CONTRACT_USER_PRIVATE_KEY, bscProvider);
 
 // ABI and contract addresses (Replace with actual ABI and contract addresses)
-const ERC20_LOCK_ABI = [...];  // Replace with the ABI of your ERC20Lock contract
+const ERC20_LOCK_ABI = loadABI('./artifacts/contracts/ERC20Lock.sol/ERC20Lock.json');  // Replace with the ABI of your ERC20Lock contract
 const ERC20_LOCK_ADDRESS = process.env.ERC20_LOCK_ADDRESS;
-const BEP20_ABI = [...];  // Replace with the ABI of your BEP20Mintable contract
+const BEP20_ABI = loadABI('./artifacts/contracts/BEP20Mintable.sol/BEP20Mintable.json');  // Replace with the ABI of your BEP20Mintable contract
 const BEP20_ADDRESS = process.env.BEP20_MINTABLE_ADDRESS;
 const BURN_ESCROW_ADDRESS = process.env.BURN_ESCROW_ADDRESS;
 
@@ -40,7 +41,13 @@ const bep20Contract = new ethers.Contract(BEP20_ADDRESS, BEP20_ABI, bscWallet);
 
 // Setup logger with a lockfile
 const logFilePath = './transfers.log';
-const lockFilePath = logFilePath + '.log.lock';
+
+// Helper function to load ABI from a JSON file
+function loadABI(filePath) {
+  const jsonContent = fs.readFileSync(path.resolve(__dirname, filePath), 'utf8');
+  const contractJson = JSON.parse(jsonContent);
+  return contractJson.abi;
+}
 
 // Ensure the log file exists
 if (!fs.existsSync(logFilePath)) {

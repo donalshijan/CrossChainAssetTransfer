@@ -1,5 +1,6 @@
 import threading
 import asyncio
+import json
 from web3 import Web3
 import os
 from dotenv import load_dotenv
@@ -11,13 +12,18 @@ import uvicorn
 # Load environment variables
 load_dotenv()
 
+def load_abi(file_path):
+    with open(file_path, 'r') as file:
+        contract_json = json.load(file)
+        return contract_json['abi']
+    
 # Connect to Ethereum and BSC nodes
 BSC_NODE_URL = os.getenv('BSC_NODE_URL')
 ETH_NODE_URL = os.getenv('ETHEREUM_NODE_URL')
 
 # Contract details
-BEP20_ABI = [...]  # Replace with the ABI of your BEP20Mintable contract
-ETH20_LOCK_ABI = [...]  # Replace with the ABI of your ERC20Lock contract
+BEP20_ABI = load_abi('../artifacts/contracts/BEP20Mintable.sol/BEP20Mintable.json')  # Replace with the ABI of your BEP20Mintable contract
+ETH20_LOCK_ABI = load_abi('../artifacts/contracts/ERC20Lock.sol/ERC20Lock.json')   # Replace with the ABI of your ERC20Lock contract
 
 BEP20_ADDRESS = os.getenv('BEP20_MINTABLE_ADDRESS')
 ERC20_LOCK_ADDRESS = os.getenv('ERC20_LOCK_ADDRESS')

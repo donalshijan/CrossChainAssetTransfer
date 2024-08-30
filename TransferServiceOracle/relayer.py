@@ -2,6 +2,7 @@ from web3 import Web3
 import os
 from dotenv import load_dotenv
 from datetime import datetime
+import json
 import time
 from utils.filelock import acquire_lock
 from utils.filelock import release_lock
@@ -9,6 +10,11 @@ from utils.filelock import release_lock
 # Load environment variables
 load_dotenv()
 
+def load_abi(file_path):
+    with open(file_path, 'r') as file:
+        contract_json = json.load(file)
+        return contract_json['abi']
+    
 # Infura/Node URLs for Ethereum and Binance Smart Chain
 ETHEREUM_NODE_URL = os.getenv('ETHEREUM_NODE_URL')
 BSC_NODE_URL = os.getenv('BSC_NODE_URL')
@@ -24,13 +30,13 @@ BURN_AND_RELEASE_COORDINATOR_CONTRACT_OWNER_ADDRESS=os.getenv('BSC_CONTRACT_OWNE
 BURN_AND_RELEASE_COORDINATOR_CONTRACT_PRIVATE_KEY=os.getenv('BSC_CONTRACT_OWNER_PRIVATE_KEY')
 
 # ABI and contract addresses (Replace with actual ABI and contract addresses)
-ERC20_LOCK_ABI = [...]  # Replace with the ABI of your ERC20Lock contract
+ERC20_LOCK_ABI = load_abi('../artifacts/contracts/ERC20Lock.sol/ERC20Lock.json')  # Replace with the ABI of your ERC20Lock contract
 ERC20_LOCK_ADDRESS = os.getenv('ERC20_LOCK_ADDRESS')
 
-BEP20_ABI = [...]  # Replace with the ABI of your BEP20Mintable contract
+BEP20_ABI = load_abi('../artifacts/contracts/BEP20Mintable.sol/BEP20Mintable.json') # Replace with the ABI of your BEP20Mintable contract
 BEP20_ADDRESS = os.getenv('BEP20_MINTABLE_ADDRESS')
 
-BURN_AND_RELEASE_COORDINATOR_ABI = [...]  # Replace with the ABI of your BEP20Mintable contract
+BURN_AND_RELEASE_COORDINATOR_ABI = load_abi('../artifacts/contracts/BurnAndReleaseCoordinator.sol/BurnAndReleaseCoordinator.json')  # Replace with the ABI of your BEP20Mintable contract
 BURN_AND_RELEASE_COORDINATOR_ADDRESS = os.getenv('BURN_AND_RELEASE_COORDINATOR_ADDRESS')
 
 # Initialize Web3 instances for Ethereum and BSC
